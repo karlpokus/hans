@@ -2,63 +2,72 @@ package main
 
 import (
 	"log"
+	"fmt"
 	"os"
 	"os/signal"
 	"os/exec"
 	"syscall"
-	"time"
 )
 
-type hansLogger struct {
-	log *log.Logger
+type Hans struct {
+	Stdout *log.Logger
+	Stderr *log.Logger
+	Apps []*App
 }
 
-func (h *hansLogger) Write(p []byte) (int, error) {
-	h.log.Print(string(p))
-	return len(p), nil
+func getPath(p string) string {
+	pwd, _ := os.Getwd()
+	return pwd + p
+}
+
+func createApp(name, interval string) *App {
+	return &App{
+		Stdout: log.New(os.Stdout, fmt.Sprintf("%-7v", name), log.Ldate | log.Ltime),
+		Cmd: exec.Command(getPath("/apps/dummy"), name, interval),
+		Name: name,
+		Running: false,
+	}
 }
 
 func main() {
-	hans := &hansLogger{
-		log: log.New(os.Stdout, "hans ", log.Ldate | log.Ltime),
+	hans := &Hans{
+		Stdout: log.New(os.Stdout, fmt.Sprintf("%-7v", "hans"), log.Ldate | log.Ltime),
+		Stderr: log.New(os.Stderr, fmt.Sprintf("%-7v", "hans"), log.Ldate | log.Ltime),
+	}
+	bixa := createApp("bixa", "5")
+	bixa.Cmd.Stdout = bixa
+	rex := createApp("rex", "3")
+	rex.Cmd.Stdout = rex
+
+	hans.Apps = []*App{bixa, rex}
+	hans.Stdout.Print("hans start")
+	for _, app := range hans.Apps {
+		go app.Run(hans)
 	}
 
-	pwd, _ := os.Getwd()
-	app := pwd + "/apps/dummy"
-
-	cmd := exec.Command(app, "foo", "5")
-	cmd.Stdout = hans
-
-	go func() {
-		if err := cmd.Start(); err != nil {
-			hans.log.Fatal(err)
-		}
-		if err := cmd.Wait(); err != nil { // blocks and closes the pipe on cmd exit
-			hans.log.Printf("err from cmd.Wait: %s", err.Error())
-		}
-		hans.log.Println("cmd.Wait done")
-	}()
-
-	// listen for SIGINT
 	sigs := make(chan os.Signal, 1) // signals are strings
 	done := make(chan bool, 1)
 
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
-		sig := <-sigs
+		<-sigs
 
-		//hans.log.Println("the signal", sig)
-		hans.log.Printf("attempting to kill %d", cmd.Process.Pid)
-
-		if err := cmd.Process.Kill(); err != nil {
-			hans.log.Printf("err from cmd.Process.Kill %s", err.Error())
+		// kill all running apps
+		if len(hans.Apps) > 0 {
+			for _, app := range hans.Apps {
+				if app.Running {
+					hans.Stdout.Printf("Killing %s", app.Name)
+					if err := app.Cmd.Process.Kill(); err != nil {
+						hans.Stderr.Printf("err from cmd.Process.Kill %s", err.Error())
+					}
+				}
+				// TODO: remove app struct from arr
+			}
 		}
-
-		time.Sleep(3 * time.Second)
 		done <- true
 	}()
 
 	<-done
-	hans.log.Println("hans exiting")
+	hans.Stdout.Println("hans exiting")
 }
