@@ -8,7 +8,7 @@ A process manager for go apps. A toy project.
 
 # usage
 ```bash
-$ go run hans.go
+$ go run *.go
 ```
 
 # todos
