@@ -1,0 +1,15 @@
+---
+
+apps:
+  - name: bixa
+    bin: /apps/dummy
+    args:
+      - bixa
+      - 5
+  - name: rex
+    bin: /apps/dummy
+    args:
+      - rex
+      - 3
+
+...

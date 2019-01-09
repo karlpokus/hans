@@ -15,7 +15,7 @@ $ go run *.go
 - [x] mvp
 - [ ] hansd
 - [ ] hansctl
-- [ ] config file
+- [x] config file
 - [ ] file watcher
 - [ ] status
 - [ ] poll process cpu, mem

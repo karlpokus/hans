@@ -7,6 +7,8 @@ import (
 	"os/signal"
 	"os/exec"
 	"syscall"
+	"gopkg.in/yaml.v2"
+	"io/ioutil"
 )
 
 type Hans struct {
@@ -35,18 +37,34 @@ func (hans *Hans) killAppsOnSignal(done chan<- bool) {
 	done <- true
 }
 
+func (hans *Hans) getConf(path string) error {
+	f, err := ioutil.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	if err := yaml.Unmarshal(f, hans); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (hans *Hans) createApps() error {
+	if err := hans.getConf("conf.yaml"); err != nil {
+		return err
+	}
+
+	for _, app := range hans.Apps {
+		app.Stdout = log.New(os.Stdout, fmt.Sprintf("%-7v", app.Name), log.Ldate | log.Ltime)
+		app.Cmd = exec.Command(getPath(app.Bin), app.Args...)
+		app.Cmd.Stdout = app
+		go app.Run(hans)
+	}
+	return nil
+}
+
 func getPath(p string) string {
 	pwd, _ := os.Getwd()
 	return pwd + p
-}
-
-func createApp(name, interval string) *App {
-	return &App{
-		Stdout: log.New(os.Stdout, fmt.Sprintf("%-7v", name), log.Ldate | log.Ltime),
-		Cmd: exec.Command(getPath("/apps/dummy"), name, interval),
-		Name: name,
-		Running: false,
-	}
 }
 
 func main() {
@@ -54,16 +72,10 @@ func main() {
 		Stdout: log.New(os.Stdout, fmt.Sprintf("%-7v", "hans"), log.Ldate | log.Ltime),
 		Stderr: log.New(os.Stderr, fmt.Sprintf("%-7v", "hans"), log.Ldate | log.Ltime),
 	}
-	bixa := createApp("bixa", "5")
-	bixa.Cmd.Stdout = bixa
-	rex := createApp("rex", "3")
-	rex.Cmd.Stdout = rex
-	
-	hans.Apps = []*App{bixa, rex}
-	hans.Stdout.Print("hans start")
-	for _, app := range hans.Apps {
-		go app.Run(hans)
+	if err := hans.createApps(); err != nil {
+		hans.Stderr.Fatal()
 	}
+	hans.Stdout.Print("hans start")
 
 	done := make(chan bool, 1)
 	go hans.killAppsOnSignal(done)

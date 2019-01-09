@@ -10,6 +10,8 @@ type App struct {
 	Cmd *exec.Cmd
 	Running bool
 	Name string
+	Bin string
+	Args []string
 }
 
 func (app *App) Write(p []byte) (int, error) {
