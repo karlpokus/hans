@@ -45,6 +45,7 @@ func (hans *Hans) getConf(path string) error {
 	if err := yaml.Unmarshal(f, hans); err != nil {
 		return err
 	}
+	// TODO: validate fields
 	return nil
 }
 
@@ -54,7 +55,7 @@ func (hans *Hans) createApps() error {
 	}
 
 	for _, app := range hans.Apps {
-		app.Stdout = log.New(os.Stdout, fmt.Sprintf("%-7v", app.Name), log.Ldate | log.Ltime)
+		app.Stdout = log.New(os.Stdout, formatName(app.Name), log.Ldate | log.Ltime)
 		app.Cmd = exec.Command(getPath(app.Bin), app.Args...)
 		app.Cmd.Stdout = app
 		go app.Run(hans)
@@ -67,10 +68,18 @@ func getPath(p string) string {
 	return pwd + p
 }
 
+func formatName(name string) string {
+	const maxChars int = 9
+	if len(name) >= maxChars {
+		return name[:9] + " "
+	}
+	return fmt.Sprintf("%-10v", name)
+}
+
 func main() {
 	hans := &Hans{
-		Stdout: log.New(os.Stdout, fmt.Sprintf("%-7v", "hans"), log.Ldate | log.Ltime),
-		Stderr: log.New(os.Stderr, fmt.Sprintf("%-7v", "hans"), log.Ldate | log.Ltime),
+		Stdout: log.New(os.Stdout, formatName("hans"), log.Ldate | log.Ltime),
+		Stderr: log.New(os.Stderr, formatName("hans"), log.Ldate | log.Ltime),
 	}
 	if err := hans.createApps(); err != nil {
 		hans.Stderr.Fatal()
