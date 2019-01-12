@@ -10,7 +10,7 @@ import (
 
 func main() {
 	if len(os.Args) != 3 {
-		fmt.Fprintln(os.Stderr, "ERR. Args missing. Exiting.")
+		fmt.Fprintln(os.Stderr, "ERR: Args missing. Exiting.")
 		os.Exit(1)
 	}
 	name := os.Args[1]

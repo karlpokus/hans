@@ -5,11 +5,12 @@ apps:
     bin: /apps/dummy
     args:
       - bixa
-      - 5
+      - 15
+    watch: /src
   - name: rex
     bin: /apps/dummy
     args:
       - rex
-      - 3
+      - 10
 
 ...

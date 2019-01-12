@@ -26,12 +26,20 @@ func (hans *Hans) killAppsOnSignal(done chan<- bool) {
 	if len(hans.Apps) > 0 {
 		for _, app := range hans.Apps {
 			if app.Running {
-				hans.Stdout.Printf("Killing %s", app.Name)
+				hans.Stdout.Printf("killing %s", app.Name)
 				if err := app.Cmd.Process.Kill(); err != nil {
-					hans.Stderr.Printf("err from cmd.Process.Kill %s", err.Error())
+					hans.Stderr.Printf("killing %s err: %s", app.Name, err.Error())
 				}
 			}
-			// TODO: remove app struct from arr
+			// TODO:
+			// - remove app struct from arr
+			// x end watcher
+			if app.Watcher.Running {
+				hans.Stdout.Printf("killing %s watcher", app.Name)
+				if err := app.Watcher.Cmd.Process.Kill(); err != nil {
+					hans.Stderr.Printf("killing %s err: %s", app.Name, err.Error())
+				}
+			}
 		}
 	}
 	done <- true
@@ -56,14 +64,21 @@ func (hans *Hans) createApps() error {
 
 	for _, app := range hans.Apps {
 		app.Stdout = log.New(os.Stdout, formatName(app.Name), log.Ldate | log.Ltime)
-		app.Cmd = exec.Command(getPath(app.Bin), app.Args...)
+		app.Cmd = exec.Command(absPath(app.Bin), app.Args...)
 		app.Cmd.Stdout = app
 		go app.Run(hans)
+
+		if len(app.Watch) > 0 {
+			// "fswatch", "-r", "--exclude", ".*", "--include", "\.go$", app.Watch
+			app.Watcher.Cmd = exec.Command("fswatch", "-r", absPath(app.Watch))
+			app.Watcher.Cmd.Stdout = app
+				go app.Watcher.Watch(hans, app.Name)
+		}
 	}
 	return nil
 }
 
-func getPath(p string) string {
+func absPath(p string) string {
 	pwd, _ := os.Getwd()
 	return pwd + p
 }
@@ -81,11 +96,11 @@ func main() {
 		Stdout: log.New(os.Stdout, formatName("hans"), log.Ldate | log.Ltime),
 		Stderr: log.New(os.Stderr, formatName("hans"), log.Ldate | log.Ltime),
 	}
+	hans.Stdout.Print("hans start")
+
 	if err := hans.createApps(); err != nil {
 		hans.Stderr.Fatal()
 	}
-	hans.Stdout.Print("hans start")
-
 	done := make(chan bool, 1)
 	go hans.killAppsOnSignal(done)
 	<-done
