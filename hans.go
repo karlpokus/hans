@@ -44,7 +44,7 @@ func (hans *Hans) killAppsOnSignal(done chan<- bool) {
 	done <- true
 }
 
-func (hans *Hans) getConf(path string) error {
+func (hans *Hans) conf(path string) error {
 	f, err := ioutil.ReadFile(path)
 	if err != nil {
 		return err
@@ -56,7 +56,7 @@ func (hans *Hans) getConf(path string) error {
 	return nil
 }
 
-func (hans *Hans) createApps() error {
+func (hans *Hans) start() error {
 	hans.Stdout.Print("hans start")
 	for _, app := range hans.Apps {
 		app.Stdout = log.New(os.Stdout, formatName(app.Name), log.Ldate | log.Ltime)
@@ -74,7 +74,7 @@ func (hans *Hans) createApps() error {
 	return nil
 }
 
-func NewHans() *Hans {
+func newHans() *Hans {
 	return &Hans{
 		Stdout: log.New(os.Stdout, formatName("hans"), log.Ldate | log.Ltime),
 		Stderr: log.New(os.Stderr, formatName("hans"), log.Ldate | log.Ltime),

@@ -19,12 +19,12 @@ func formatName(name string) string {
 }
 
 func main() {
-	hans := NewHans()
-	err := hans.getConf("conf.yaml")
+	hans := newHans()
+	err := hans.conf("conf.yaml")
 	if err != nil {
 		hans.Stderr.Fatal(err)
 	}
-	err = hans.createApps()
+	err = hans.start()
 	if err != nil {
 		hans.Stderr.Fatal(err)
 	}
