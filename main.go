@@ -23,12 +23,10 @@ func main() {
 	err := hans.getConf("conf.yaml")
 	if err != nil {
 		hans.Stderr.Fatal(err)
-		return
 	}
 	err = hans.createApps()
 	if err != nil {
 		hans.Stderr.Fatal(err)
-		return
 	}
 	done := make(chan bool, 1)
 	go hans.killAppsOnSignal(done)
