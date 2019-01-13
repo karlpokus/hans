@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"fmt"
 	"os"
 	"os/signal"
 	"os/exec"
@@ -58,10 +57,7 @@ func (hans *Hans) getConf(path string) error {
 }
 
 func (hans *Hans) createApps() error {
-	if err := hans.getConf("conf.yaml"); err != nil {
-		return err
-	}
-
+	hans.Stdout.Print("hans start")
 	for _, app := range hans.Apps {
 		app.Stdout = log.New(os.Stdout, formatName(app.Name), log.Ldate | log.Ltime)
 		app.Cmd = exec.Command(absPath(app.Bin), app.Args...)
@@ -78,31 +74,9 @@ func (hans *Hans) createApps() error {
 	return nil
 }
 
-func absPath(p string) string {
-	pwd, _ := os.Getwd()
-	return pwd + p
-}
-
-func formatName(name string) string {
-	const maxChars int = 9
-	if len(name) >= maxChars {
-		return name[:9] + " "
-	}
-	return fmt.Sprintf("%-10v", name)
-}
-
-func main() {
-	hans := &Hans{
+func NewHans() *Hans {
+	return &Hans{
 		Stdout: log.New(os.Stdout, formatName("hans"), log.Ldate | log.Ltime),
 		Stderr: log.New(os.Stderr, formatName("hans"), log.Ldate | log.Ltime),
 	}
-	hans.Stdout.Print("hans start")
-
-	if err := hans.createApps(); err != nil {
-		hans.Stderr.Fatal()
-	}
-	done := make(chan bool, 1)
-	go hans.killAppsOnSignal(done)
-	<-done
-	hans.Stdout.Println("hans end")
 }
