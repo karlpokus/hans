@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
+	"errors"
 )
 
 type Hans struct {
@@ -57,21 +58,23 @@ func (hans *Hans) conf(path string) error {
 }
 
 func (hans *Hans) start() error {
-	hans.Stdout.Print("hans start")
-	for _, app := range hans.Apps {
-		app.Stdout = log.New(os.Stdout, formatName(app.Name), log.Ldate | log.Ltime)
-		app.Cmd = exec.Command(absPath(app.Bin), app.Args...)
-		app.Cmd.Stdout = app
-		go app.Run(hans)
+	if len(hans.Apps) > 0 {
+		for _, app := range hans.Apps {
+			app.Stdout = log.New(os.Stdout, formatName(app.Name), log.Ldate | log.Ltime)
+			app.Cmd = exec.Command(absPath(app.Bin), app.Args...)
+			app.Cmd.Stdout = app
+			go app.Run(hans)
 
-		if len(app.Watch) > 0 {
-			// "fswatch", "-r", "--exclude", ".*", "--include", "\.go$", app.Watch
-			app.Watcher.Cmd = exec.Command("fswatch", "-r", absPath(app.Watch))
-			app.Watcher.Cmd.Stdout = app
-				go app.Watcher.Watch(hans, app.Name)
+			if len(app.Watch) > 0 {
+				// "fswatch", "-r", "--exclude", ".*", "--include", "\.go$", app.Watch
+				app.Watcher.Cmd = exec.Command("fswatch", "-r", absPath(app.Watch))
+				app.Watcher.Cmd.Stdout = app
+					go app.Watcher.Watch(hans, app.Name)
+			}
 		}
+		return nil
 	}
-	return nil
+	return errors.New("no apps to run")
 }
 
 func newHans() *Hans {
