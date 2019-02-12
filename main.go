@@ -1,35 +1,15 @@
 package main
 
-import (
-	"os"
-	"fmt"
-)
-
-func absPath(p string) string {
-	pwd, _ := os.Getwd()
-	return pwd + p
-}
-
-func formatName(name string) string {
-	const maxChars int = 9
-	if len(name) >= maxChars {
-		return name[:9] + " "
-	}
-	return fmt.Sprintf("%-10v", name)
-}
+import "github.com/karlpokus/hans/pkg/hans"
 
 func main() {
-	hans := newHans()
-	err := hans.conf("conf.yaml")
+	h, err := hans.New("conf.yaml")
 	if err != nil {
-		hans.Stderr.Fatal(err)
+		panic(err)
 	}
-	err = hans.start()
+	done, err := h.Start()
 	if err != nil {
-		hans.Stderr.Fatal(err)
+		panic(err)
 	}
-	done := make(chan bool, 1)
-	go hans.killAppsOnSignal(done)
 	<-done
-	hans.Stdout.Println("hans end")
 }

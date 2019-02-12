@@ -2,15 +2,13 @@
 
 apps:
   - name: bixa
-    bin: /apps/dummy
-    args:
-      - bixa
-      - 15
-    watch: /src
+    bin: /Users/pokus/golang/src/github.com/karlpokus/hans/example/apps/bixa bixa 15
+    watch: /Users/pokus/golang/src/github.com/karlpokus/hans/example/src/bixa
+    build: go build -o /Users/pokus/golang/src/github.com/karlpokus/hans/example/apps/bixa /Users/pokus/golang/src/github.com/karlpokus/hans/example/src/bixa/bixa.go
   - name: rex
-    bin: /apps/dummy
-    args:
-      - rex
-      - 10
+    bin: /Users/pokus/golang/src/github.com/karlpokus/hans/example/apps/rex
+  - name: mys
+    bin: /Users/pokus/golang/src/github.com/karlpokus/hans/example/apps/mys.js
+    watch: /Users/pokus/golang/src/github.com/karlpokus/hans/example/apps/mys.js
 
 ...
