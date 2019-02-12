@@ -1,14 +1,15 @@
 ---
 
+cwd: /Users/pokus/golang/src/github.com/karlpokus/hans/example/
 apps:
   - name: bixa
-    bin: /Users/pokus/golang/src/github.com/karlpokus/hans/example/apps/bixa bixa 15
-    watch: /Users/pokus/golang/src/github.com/karlpokus/hans/example/src/bixa
+    bin: apps/bixa bixa 15
+    watch: src/bixa
     build: go build -o /Users/pokus/golang/src/github.com/karlpokus/hans/example/apps/bixa /Users/pokus/golang/src/github.com/karlpokus/hans/example/src/bixa/bixa.go
   - name: rex
-    bin: /Users/pokus/golang/src/github.com/karlpokus/hans/example/apps/rex
+    bin: apps/rex
   - name: mys
-    bin: /Users/pokus/golang/src/github.com/karlpokus/hans/example/apps/mys.js
-    watch: /Users/pokus/golang/src/github.com/karlpokus/hans/example/apps/mys.js
+    bin: apps/mys.js
+    watch: apps/mys.js
 
 ...

@@ -16,6 +16,7 @@ type Hans struct {
 	Stdout *log.Logger
 	Stderr *log.Logger
 	Apps   []*App
+	Cwd    string
 }
 
 // cleanup kills running apps and associated watchers on os.signals
@@ -117,7 +118,7 @@ func formatName(name string) string {
 	return fmt.Sprintf("%-10v", name)
 }
 
-// splitBin formats a string command
+// splitBin formats a space-separated string command
 func splitBin(s string) (string, []string) {
 	args := strings.Split(s, " ")
 	return args[0], args[1:]

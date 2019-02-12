@@ -15,6 +15,7 @@ type App struct {
 	Watch   string
 	Build   string
 	Watcher *Watcher
+	Cwd     string
 }
 
 func (app *App) run(hans *Hans) {
@@ -30,10 +31,18 @@ func (app *App) run(hans *Hans) {
 	}
 }
 
+func (app *App) path(p string) string {
+	if len(app.Cwd) > 0 {
+		return app.Cwd + p
+	}
+	return p
+}
+
 func (app *App) start(hans *Hans) {
+	app.Cwd = hans.Cwd
 	app.Stdout = log.New(os.Stdout, formatName(app.Name), log.Ldate|log.Ltime)
 	cmd, args := splitBin(app.Bin)
-	app.Cmd = exec.Command(cmd, args...)
+	app.Cmd = exec.Command(app.path(cmd), args...)
 	app.Cmd.Stdout = app
 	go app.run(hans)
 
@@ -41,7 +50,7 @@ func (app *App) start(hans *Hans) {
 		// "fswatch", "-r", "--exclude", ".*", "--include", "\.go$", app.Watch
 		app.Watcher = &Watcher{
 			Stdout:  log.New(os.Stdout, formatName("watcher"), log.Ldate|log.Ltime),
-			Cmd:     exec.Command("fswatch", "-r", app.Watch),
+			Cmd:     exec.Command("fswatch", "-r", app.path(app.Watch)),
 			AppName: app.Name,
 		}
 		app.Watcher.Cmd.Stdout = app.Watcher
@@ -56,7 +65,7 @@ func (app *App) start(hans *Hans) {
 
 func (app *App) restart(hans *Hans) {
 	cmd, args := splitBin(app.Bin)
-	app.Cmd = exec.Command(cmd, args...)
+	app.Cmd = exec.Command(app.path(cmd), args...)
 	app.Cmd.Stdout = app
 	go app.run(hans)
 }
