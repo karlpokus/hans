@@ -8,6 +8,7 @@ import (
 
 type App struct {
 	Stdout  *log.Logger
+	Stderr	*log.Logger
 	Cmd     *exec.Cmd
 	Running bool
 	Name    string
@@ -18,17 +19,14 @@ type App struct {
 	Cwd     string
 }
 
-func (app *App) run(hans *Hans) {
+func (app *App) run() {
 	if err := app.Cmd.Start(); err != nil {
-		hans.Stderr.Fatal(err)
+		app.Stderr.Fatal(err)
 		return
 	}
 	app.Running = true
-	hans.Stdout.Printf("%s started", app.Name)
-
-	if err := app.Cmd.Wait(); err != nil { // blocks and closes the pipe on cmd exit
-		hans.Stderr.Printf("%s wait err: %s", app.Name, err.Error())
-	}
+	app.Stdout.Print("running")
+	app.Cmd.Wait() // blocks and closes the pipe on cmd exit
 }
 
 func (app *App) path(p string) string {
@@ -38,56 +36,45 @@ func (app *App) path(p string) string {
 	return p
 }
 
-func (app *App) start(hans *Hans) {
-	app.Cwd = hans.Cwd
+func (app *App) init(cwd string) {
+	app.Cwd = cwd
 	app.Stdout = log.New(os.Stdout, formatName(app.Name), log.Ldate|log.Ltime)
+	app.Stderr = log.New(os.Stderr, formatName(app.Name), log.Ldate|log.Ltime)
 	cmd, args := splitBin(app.Bin)
 	app.Cmd = exec.Command(app.path(cmd), args...)
 	app.Cmd.Stdout = app
-	go app.run(hans)
-
+	app.Watcher = &Watcher{}
 	if len(app.Watch) > 0 {
 		// "fswatch", "-r", "--exclude", ".*", "--include", "\.go$", app.Watch
-		app.Watcher = &Watcher{
-			Stdout:  log.New(os.Stdout, formatName("watcher"), log.Ldate|log.Ltime),
-			Cmd:     exec.Command("fswatch", "-r", app.path(app.Watch)),
-			AppName: app.Name,
-		}
+		app.Watcher.Cmd = exec.Command("fswatch", "-r", app.path(app.Watch))
+		app.Watcher.AppName = app.Name
 		app.Watcher.Cmd.Stdout = app.Watcher
-		c := make(chan string, 1)
-		app.Watcher.Ch = c
-		go hans.restart(c)
-		go app.Watcher.Watch(hans)
-	} else {
-		app.Watcher = &Watcher{}
 	}
 }
 
-func (app *App) restart(hans *Hans) {
+func (app *App) restart() {
 	cmd, args := splitBin(app.Bin)
 	app.Cmd = exec.Command(app.path(cmd), args...)
 	app.Cmd.Stdout = app
-	go app.run(hans)
+	go app.run()
 }
 
-func (app *App) kill(hans *Hans) {
-	hans.Stdout.Printf("killing %s", app.Name)
+func (app *App) kill() {
 	app.Running = false
-	if err := app.Cmd.Process.Kill(); err != nil {
-		hans.Stderr.Printf("killing %s err: %s", app.Name, err.Error())
-	}
+	app.Cmd.Process.Kill()
+	app.Stdout.Print("terminated")
 }
 
-func (app *App) build(hans *Hans, done chan<- bool) {
+func (app *App) build(done chan<- bool) {
 	cmd, args := splitBin(app.Build)
 	out, err := exec.Command(cmd, args...).CombinedOutput() // includes run
 	if err != nil {
-		hans.Stderr.Print(err)
+		app.Stderr.Print(err) // TODO: don't restart if build failed
 	}
 	if len(out) > 0 {
-		hans.Stderr.Print(out)
+		app.Stderr.Print(string(out))
 	} else {
-		hans.Stdout.Printf("%s rebuilt", app.Name)
+		app.Stdout.Print("build done")
 	}
 	done <- true
 }

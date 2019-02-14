@@ -29,10 +29,10 @@ func (hans *Hans) cleanup(done chan<- bool) {
 	if len(hans.Apps) > 0 {
 		for _, app := range hans.Apps {
 			if app.Running {
-				app.kill(hans)
+				app.kill()
 			}
 			if app.Watcher.Running {
-				app.Watcher.kill(hans, app.Name)
+				app.Watcher.kill(app.Stdout)
 			}
 		}
 	}
@@ -40,17 +40,23 @@ func (hans *Hans) cleanup(done chan<- bool) {
 }
 
 // Start starts all apps and associated watchers
-// it also prepares cleanup
+// it also prepares cleanup on main exit
 func (hans *Hans) Start() (<-chan bool, error) {
-	if len(hans.Apps) > 0 {
-		for _, app := range hans.Apps {
-			app.start(hans)
-		}
-		done := make(chan bool, 1)
-		go hans.cleanup(done)
-		return done, nil
+	if len(hans.Apps) == 0 {
+		return nil, errors.New("no apps to run")
 	}
-	return nil, errors.New("no apps to run")
+	for _, app := range hans.Apps {
+		app.init(hans.Cwd)
+		go app.run()
+		if len(app.Watch) > 0 {
+			c := make(chan string, 1)
+			go app.Watcher.Watch(c, app.Stdout, app.Stderr)
+			go hans.restart(c)
+		}
+	}
+	done := make(chan bool, 1)
+	go hans.cleanup(done)
+	return done, nil
 }
 
 // appFromName returns an App type from an app name
@@ -71,12 +77,12 @@ func (hans *Hans) restart(c chan string) {
 		app := hans.appFromName(<-c)
 		if len(app.Build) > 0 {
 			done := make(chan bool)
-			go app.build(hans, done)
+			go app.build(done)
 			<-done
 		}
 		if app.Running {
-			app.kill(hans)
-			app.restart(hans)
+			app.kill()
+			app.restart()
 		}
 	}
 }

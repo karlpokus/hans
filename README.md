@@ -36,6 +36,8 @@ $ go run main.go
 - [x] relative paths in config
 - [ ] scale app
 - [ ] os independent paths
+- [x] write tests and remove app dependency on hans
+- [ ] pass Env flags to children via `Cmd.Env`
 
 # license
 MIT
