@@ -29,9 +29,11 @@ func (hans *Hans) cleanup(done chan<- bool) {
 	if len(hans.Apps) > 0 {
 		for _, app := range hans.Apps {
 			if app.Running {
+				hans.Stdout.Printf("killing %s", app.Name)
 				app.kill()
 			}
 			if app.Watcher.Running {
+				hans.Stdout.Printf("killing %s watcher", app.Name)
 				app.Watcher.kill(app.Stdout)
 			}
 		}
@@ -45,10 +47,12 @@ func (hans *Hans) Start() (<-chan bool, error) {
 	if len(hans.Apps) == 0 {
 		return nil, errors.New("no apps to run")
 	}
-	for _, app := range hans.Apps {
+	for _, app := range hans.Apps { // TODO: pass success/fail channels to app.run
+		hans.Stdout.Printf("starting %s", app.Name)
 		app.init(hans.Cwd)
 		go app.run()
 		if len(app.Watch) > 0 {
+			hans.Stdout.Printf("starting %s watcher", app.Name)
 			c := make(chan string, 1)
 			go app.Watcher.Watch(c, app.Stdout, app.Stderr)
 			go hans.restart(c)

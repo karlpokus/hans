@@ -6,6 +6,8 @@ import (
 	"os/exec"
 )
 
+var execCommand = exec.Command
+
 type App struct {
 	Stdout  *log.Logger
 	Stderr	*log.Logger
@@ -25,7 +27,6 @@ func (app *App) run() {
 		return
 	}
 	app.Running = true
-	app.Stdout.Print("running")
 	app.Cmd.Wait() // blocks and closes the pipe on cmd exit
 }
 
@@ -41,12 +42,12 @@ func (app *App) init(cwd string) {
 	app.Stdout = log.New(os.Stdout, formatName(app.Name), log.Ldate|log.Ltime)
 	app.Stderr = log.New(os.Stderr, formatName(app.Name), log.Ldate|log.Ltime)
 	cmd, args := splitBin(app.Bin)
-	app.Cmd = exec.Command(app.path(cmd), args...)
+	app.Cmd = execCommand(app.path(cmd), args...)
 	app.Cmd.Stdout = app
 	app.Watcher = &Watcher{}
 	if len(app.Watch) > 0 {
 		// "fswatch", "-r", "--exclude", ".*", "--include", "\.go$", app.Watch
-		app.Watcher.Cmd = exec.Command("fswatch", "-r", app.path(app.Watch))
+		app.Watcher.Cmd = execCommand("fswatch", "-r", app.path(app.Watch))
 		app.Watcher.AppName = app.Name
 		app.Watcher.Cmd.Stdout = app.Watcher
 	}
@@ -54,7 +55,7 @@ func (app *App) init(cwd string) {
 
 func (app *App) restart() {
 	cmd, args := splitBin(app.Bin)
-	app.Cmd = exec.Command(app.path(cmd), args...)
+	app.Cmd = execCommand(app.path(cmd), args...)
 	app.Cmd.Stdout = app
 	go app.run()
 }
@@ -62,12 +63,11 @@ func (app *App) restart() {
 func (app *App) kill() {
 	app.Running = false
 	app.Cmd.Process.Kill()
-	app.Stdout.Print("terminated")
 }
 
 func (app *App) build(done chan<- bool) {
 	cmd, args := splitBin(app.Build)
-	out, err := exec.Command(cmd, args...).CombinedOutput() // includes run
+	out, err := execCommand(cmd, args...).CombinedOutput() // includes run
 	if err != nil {
 		app.Stderr.Print(err) // TODO: don't restart if build failed
 	}

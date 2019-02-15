@@ -19,7 +19,6 @@ func (w *Watcher) Watch(c chan string, stdout, stderr *log.Logger) {
 		return
 	}
 	w.Running = true
-	stdout.Print("watcher running")
 	w.Cmd.Wait()
 }
 
@@ -31,5 +30,4 @@ func (w Watcher) Write(p []byte) (int, error) {
 func (w *Watcher) kill(stdout *log.Logger) {
 	w.Running = false
 	w.Cmd.Process.Kill()
-	stdout.Print("watcher terminated")
 }
