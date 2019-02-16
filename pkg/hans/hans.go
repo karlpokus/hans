@@ -10,13 +10,20 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 )
+
+type Opt struct {
+	Cwd string
+	TTL string
+}
 
 type Hans struct {
 	Stdout *log.Logger
 	Stderr *log.Logger
 	Apps   []*App
-	Cwd    string
+	Opts   Opt
+	TTL time.Duration // TODO: make a conf struct instead
 }
 
 // cleanup kills running apps and associated watchers on os.signals
@@ -34,7 +41,7 @@ func (hans *Hans) cleanup(done chan<- bool) {
 			}
 			if app.Watcher.Running {
 				hans.Stdout.Printf("killing %s watcher", app.Name)
-				app.Watcher.kill(app.Stdout)
+				app.Watcher.kill()
 			}
 		}
 	}
@@ -47,15 +54,41 @@ func (hans *Hans) Start() (<-chan bool, error) {
 	if len(hans.Apps) == 0 {
 		return nil, errors.New("no apps to run")
 	}
-	for _, app := range hans.Apps { // TODO: pass success/fail channels to app.run
-		hans.Stdout.Printf("starting %s", app.Name)
-		app.init(hans.Cwd)
-		go app.run()
+	for _, app := range hans.Apps {
+		hans.Stdout.Printf("%s starting", app.Name)
+		app.init(hans.Opts.Cwd)
+		fail := make(chan error)
+		go app.run(fail)
+
+		select {
+		case <-time.After(hans.TTL):
+			hans.Stderr.Printf("%s timed out", app.Name)
+			continue
+		case err := <-fail:
+			if err != nil {
+				hans.Stderr.Printf("%s did not start %s", app.Name, err)
+				continue
+			}
+			hans.Stdout.Printf("%s started", app.Name)
+		}
+
 		if len(app.Watch) > 0 {
-			hans.Stdout.Printf("starting %s watcher", app.Name)
-			c := make(chan string, 1)
-			go app.Watcher.Watch(c, app.Stdout, app.Stderr)
-			go hans.restart(c)
+			hans.Stdout.Printf("%s watcher starting", app.Name)
+			restart := make(chan string)
+			go app.Watcher.Watch(fail, restart)
+
+			select {
+			case <-time.After(hans.TTL):
+				hans.Stderr.Printf("%s watcher timed out", app.Name)
+				continue
+			case err := <-fail:
+				if err != nil {
+					hans.Stderr.Printf("%s watcher did not start %s", app.Name, err)
+					continue
+				}
+				hans.Stdout.Printf("%s watcher started", app.Name)
+				go hans.restart(restart)
+			}
 		}
 	}
 	done := make(chan bool, 1)
@@ -86,7 +119,7 @@ func (hans *Hans) restart(c chan string) {
 		}
 		if app.Running {
 			app.kill()
-			app.restart()
+			//app.restart()
 		}
 	}
 }
@@ -98,6 +131,14 @@ func New(path string) (*Hans, error) {
 		Stderr: log.New(os.Stderr, formatName("hans"), log.Ldate|log.Ltime),
 	}
 	err := hans.conf(path)
+	if err != nil {
+		return hans, err
+	}
+	// set defaults
+	if hans.Opts.TTL == "" {
+		hans.Opts.TTL = "1s"
+	}
+	hans.TTL, err = time.ParseDuration(hans.Opts.TTL)
 	return hans, err
 }
 

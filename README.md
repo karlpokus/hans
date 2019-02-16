@@ -10,12 +10,14 @@ A process manager. A toy project.
 # usage
 config
 ```yaml
-cwd: global base path # optional
 apps:
 - name: the name of the app # required
-  bin: absolute|relative path to bin and space separated args to run # required
-  watch: absolute|relative path to a src dir or file to watch for changes. Will trigger a restart of bin # optional
+  bin: path to bin and space separated args to run # required
+  watch: path to a src dir or file to watch for changes. Will trigger a restart of bin # optional
   build: absolute path to build command to run on src changes before restart # optional
+opts:
+  cwd: global base path for relative paths # optional
+  ttl: timeout for app-, and watcher starts # optional, defaults to 1s
 ```
 start
 ```bash

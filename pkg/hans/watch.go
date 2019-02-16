@@ -1,7 +1,6 @@
 package hans
 
 import (
-	"log"
 	"os/exec"
 )
 
@@ -12,12 +11,13 @@ type Watcher struct {
 	Ch      chan string
 }
 
-func (w *Watcher) Watch(c chan string, stdout, stderr *log.Logger) {
-	w.Ch = c
+func (w *Watcher) Watch(fail chan error, restart chan string) {
+	w.Ch = restart
 	if err := w.Cmd.Start(); err != nil {
-		stderr.Print(err)
+		fail <- err
 		return
 	}
+	fail <- nil
 	w.Running = true
 	w.Cmd.Wait()
 }
@@ -27,7 +27,7 @@ func (w Watcher) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-func (w *Watcher) kill(stdout *log.Logger) {
+func (w *Watcher) kill() {
 	w.Running = false
 	w.Cmd.Process.Kill()
 }

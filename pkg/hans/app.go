@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"time"
 )
 
 var execCommand = exec.Command
@@ -21,11 +22,12 @@ type App struct {
 	Cwd     string
 }
 
-func (app *App) run() {
+func (app *App) run(fail chan error) {
 	if err := app.Cmd.Start(); err != nil {
-		app.Stderr.Fatal(err)
+		fail <- err
 		return
 	}
+	fail <- nil
 	app.Running = true
 	app.Cmd.Wait() // blocks and closes the pipe on cmd exit
 }
@@ -53,12 +55,12 @@ func (app *App) init(cwd string) {
 	}
 }
 
-func (app *App) restart() {
+/*func (app *App) restart() {
 	cmd, args := splitBin(app.Bin)
 	app.Cmd = execCommand(app.path(cmd), args...)
 	app.Cmd.Stdout = app
 	go app.run()
-}
+}*/
 
 func (app *App) kill() {
 	app.Running = false

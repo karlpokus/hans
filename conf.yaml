@@ -1,6 +1,5 @@
 ---
 
-cwd: /Users/pokus/golang/src/github.com/karlpokus/hans/example/
 apps:
   - name: bixa
     bin: apps/bixa bixa 15
@@ -11,5 +10,8 @@ apps:
   - name: mys
     bin: apps/mys.js
     watch: apps/mys.js
+opts:
+  cwd: /Users/pokus/golang/src/github.com/karlpokus/hans/example/
+  ttl: 2s
 
 ...
