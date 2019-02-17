@@ -87,7 +87,7 @@ func (hans *Hans) Start() (<-chan bool, error) {
 					continue
 				}
 				hans.Stdout.Printf("%s watcher started", app.Name)
-				go hans.restart(restart)
+				go hans.restart(restart) // TODO: only start one of these for all watchers?
 			}
 		}
 	}
@@ -110,16 +110,38 @@ func (hans *Hans) appFromName(appName string) *App {
 // also runs build before restarting if the build field is set in the apps config
 func (hans *Hans) restart(c chan string) {
 	for {
-		// TODO: only unblock when build and restart are done: semaphore?
+		// TODO: wait for build and restart if multiple watchers share the chan
 		app := hans.appFromName(<-c)
+		hans.Stdout.Printf("detected change on %s src", app.Name)
+		hans.Stdout.Printf("attempting %s restart", app.Name)
 		if len(app.Build) > 0 {
-			done := make(chan bool)
-			go app.build(done)
-			<-done
+			hans.Stdout.Printf("rebuilding %s first", app.Name)
+			res, err := app.build()
+			if err != nil {
+				hans.Stderr.Printf("%s build err: %v", app.Name, err)
+				hans.Stderr.Printf("%s", res)
+				hans.Stderr.Printf("%s restart aborted", app.Name)
+				continue // don't restart
+			}
+			hans.Stdout.Printf("%s build succesful", app.Name)
 		}
 		if app.Running {
 			app.kill()
-			//app.restart()
+			hans.Stdout.Printf("restarting %s", app.Name)
+			fail := make(chan error)
+			app.restart(fail)
+
+			select {
+			case <-time.After(hans.TTL):
+				hans.Stderr.Printf("%s timed out", app.Name)
+				continue
+			case err := <-fail:
+				if err != nil {
+					hans.Stderr.Printf("%s did not restart %s", app.Name, err)
+					continue
+				}
+				hans.Stdout.Printf("%s restarted", app.Name)
+			}
 		}
 	}
 }

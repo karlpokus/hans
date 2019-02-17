@@ -40,9 +40,7 @@ func (app *App) init(cwd string) {
 	app.Cwd = cwd
 	app.Stdout = log.New(os.Stdout, formatName(app.Name), log.Ldate|log.Ltime)
 	app.Stderr = log.New(os.Stderr, formatName(app.Name), log.Ldate|log.Ltime)
-	cmd, args := splitBin(app.Bin)
-	app.Cmd = execCommand(app.path(cmd), args...)
-	app.Cmd.Stdout = app
+	app.setCmd()
 	app.Watcher = &Watcher{}
 	if len(app.Watch) > 0 {
 		// "fswatch", "-r", "--exclude", ".*", "--include", "\.go$", app.Watch
@@ -52,30 +50,29 @@ func (app *App) init(cwd string) {
 	}
 }
 
-/*func (app *App) restart() {
+func (app *App) setCmd() {
 	cmd, args := splitBin(app.Bin)
 	app.Cmd = execCommand(app.path(cmd), args...)
 	app.Cmd.Stdout = app
-	go app.run()
-}*/
+}
 
-func (app *App) kill() {
+func (app *App) restart(fail chan error) {
+	app.setCmd()
+	go app.run(fail)
+}
+
+func (app *App) kill() { // TODO: check return value of Kill()
 	app.Running = false
 	app.Cmd.Process.Kill()
 }
 
-func (app *App) build(done chan<- bool) {
+func (app *App) build() ([]byte, error) {
 	cmd, args := splitBin(app.Build)
 	out, err := execCommand(cmd, args...).CombinedOutput() // includes run
 	if err != nil {
-		app.Stderr.Print(err) // TODO: don't restart if build failed
+		return out, err
 	}
-	if len(out) > 0 {
-		app.Stderr.Print(string(out))
-	} else {
-		app.Stdout.Print("build done")
-	}
-	done <- true
+	return out, nil
 }
 
 func (app *App) Write(p []byte) (int, error) {
