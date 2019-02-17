@@ -4,7 +4,6 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"time"
 )
 
 var execCommand = exec.Command
@@ -23,11 +22,9 @@ type App struct {
 }
 
 func (app *App) run(fail chan error) {
-	if err := app.Cmd.Start(); err != nil {
-		fail <- err
-		return
-	}
-	fail <- nil
+	err := app.Cmd.Start()
+	fail <- err
+	if err != nil { return }
 	app.Running = true
 	app.Cmd.Wait() // blocks and closes the pipe on cmd exit
 }

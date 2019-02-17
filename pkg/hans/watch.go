@@ -13,11 +13,9 @@ type Watcher struct {
 
 func (w *Watcher) Watch(fail chan error, restart chan string) {
 	w.Ch = restart
-	if err := w.Cmd.Start(); err != nil {
-		fail <- err
-		return
-	}
-	fail <- nil
+	err := w.Cmd.Start()
+	fail <- err
+	if err != nil { return }
 	w.Running = true
 	w.Cmd.Wait()
 }
