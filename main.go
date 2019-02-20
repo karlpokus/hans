@@ -1,9 +1,14 @@
 package main
 
-import "github.com/karlpokus/hans/pkg/hans"
+import (
+	"github.com/karlpokus/hans/pkg/hans"
+	"os"
+	"fmt"
+)
 
 func main() {
-	h, err := hans.New("conf.yaml")
+	conf := os.Args[1]
+	h, err := hans.New(conf)
 	if err != nil {
 		panic(err)
 	}

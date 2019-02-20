@@ -21,7 +21,7 @@ opts:
 ```
 start
 ```bash
-$ go run main.go
+$ go run main.go path/to/conf
 ```
 
 # todos
