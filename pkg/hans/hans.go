@@ -23,7 +23,7 @@ type Hans struct {
 	Stderr *log.Logger
 	Apps   []*App
 	Opts   Opt
-	TTL time.Duration // TODO: make a conf struct instead
+	TTL    time.Duration // TODO: make a conf struct instead
 }
 
 // cleanup kills running apps and associated watchers on os.signals
@@ -152,7 +152,7 @@ func New(path string) (*Hans, error) {
 		Stdout: log.New(os.Stdout, formatName("hans"), log.Ldate|log.Ltime),
 		Stderr: log.New(os.Stderr, formatName("hans"), log.Ldate|log.Ltime),
 	}
-	err := hans.conf(path)
+	err := readConf(hans, path)
 	if err != nil {
 		return hans, err
 	}
@@ -165,7 +165,7 @@ func New(path string) (*Hans, error) {
 }
 
 // conf reads a config file and populates the Hans type
-func (hans *Hans) conf(path string) error {
+func readConf(hans *Hans, path string) error {
 	f, err := ioutil.ReadFile(path)
 	if err != nil {
 		return err
