@@ -1,6 +1,7 @@
 package hans
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"gopkg.in/yaml.v2"
@@ -13,17 +14,21 @@ import (
 	"time"
 )
 
+var RUNTIME = os.Getenv("RUNTIME")
+
 type Opt struct {
 	Cwd string
 	TTL string
 }
 
 type Hans struct {
-	Stdout *log.Logger
-	Stderr *log.Logger
-	Apps   []*App
-	Opts   Opt
-	TTL    time.Duration // TODO: make a conf struct instead
+	Stdout    *log.Logger
+	Stderr    *log.Logger
+	Apps      []*App
+	Opts      Opt
+	TTL       time.Duration
+	StdoutBuf bytes.Buffer
+	StderrBuf bytes.Buffer
 }
 
 // cleanup kills running apps and associated watchers on os.signals
@@ -146,12 +151,21 @@ func (hans *Hans) restart(c chan string) {
 	}
 }
 
+// setLogging sets the logging for hans based on RUNTIME env
+func (hans *Hans) setLogging() {
+	if RUNTIME == "TEST" {
+		hans.Stdout = log.New(&hans.StdoutBuf, "", 0)
+		hans.Stderr = log.New(&hans.StderrBuf, "", 0)
+	} else {
+		hans.Stdout = log.New(os.Stdout, formatName("hans"), log.Ldate|log.Ltime)
+		hans.Stderr = log.New(os.Stderr, formatName("hans"), log.Ldate|log.Ltime)
+	}
+}
+
 // New takes a path to a config file and returns a complete Hans type
 func New(path string) (*Hans, error) {
-	hans := &Hans{
-		Stdout: log.New(os.Stdout, formatName("hans"), log.Ldate|log.Ltime),
-		Stderr: log.New(os.Stderr, formatName("hans"), log.Ldate|log.Ltime),
-	}
+	hans := &Hans{}
+	hans.setLogging()
 	err := readConf(hans, path)
 	if err != nil {
 		return hans, err

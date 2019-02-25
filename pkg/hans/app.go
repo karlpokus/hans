@@ -1,6 +1,7 @@
 package hans
 
 import (
+	"bytes"
 	"log"
 	"os"
 	"os/exec"
@@ -9,22 +10,26 @@ import (
 var execCommand = exec.Command
 
 type App struct {
-	Stdout  *log.Logger
-	Stderr	*log.Logger
-	Cmd     *exec.Cmd
-	Running bool
-	Name    string
-	Bin     string
-	Watch   string
-	Build   string
-	Watcher *Watcher
-	Cwd     string
+	Stdout    *log.Logger
+	Stderr    *log.Logger
+	Cmd       *exec.Cmd
+	Running   bool
+	Name      string
+	Bin       string
+	Watch     string
+	Build     string
+	Watcher   *Watcher
+	Cwd       string
+	StdoutBuf bytes.Buffer
+	StderrBuf bytes.Buffer
 }
 
 func (app *App) run(fail chan error) {
 	err := app.Cmd.Start()
 	fail <- err
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	app.Running = true
 	app.Cmd.Wait() // blocks and closes the pipe on cmd exit
 }
@@ -36,10 +41,20 @@ func (app *App) path(p string) string {
 	return p
 }
 
+// setLogging sets the logging for hans based on RUNTIME env
+func (app *App) setLogging() {
+	if RUNTIME == "TEST" {
+		app.Stdout = log.New(&app.StdoutBuf, "", 0)
+		app.Stderr = log.New(&app.StderrBuf, "", 0)
+	} else {
+		app.Stdout = log.New(os.Stdout, formatName(app.Name), log.Ldate|log.Ltime)
+		app.Stderr = log.New(os.Stderr, formatName(app.Name), log.Ldate|log.Ltime)
+	}
+}
+
 func (app *App) init(cwd string) {
 	app.Cwd = cwd
-	app.Stdout = log.New(os.Stdout, formatName(app.Name), log.Ldate|log.Ltime)
-	app.Stderr = log.New(os.Stderr, formatName(app.Name), log.Ldate|log.Ltime)
+	app.setLogging()
 	app.setCmd()
 	app.Watcher = &Watcher{}
 	if len(app.Watch) > 0 {
