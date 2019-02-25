@@ -15,7 +15,10 @@ func (w *Watcher) Watch(fail chan error, restart chan string) {
 	w.Ch = restart
 	err := w.Cmd.Start()
 	fail <- err
-	if err != nil { return }
+	close(fail)
+	if err != nil {
+		return
+	}
 	w.Running = true
 	w.Cmd.Wait()
 }
