@@ -31,13 +31,8 @@ type Hans struct {
 	StderrBuf bytes.Buffer
 }
 
-// cleanup kills running apps and associated watchers on os.signals
-// when done it writes to the passed in done channel
-func (hans *Hans) cleanup(done chan<- bool) {
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	<-sigs
-
+// cleanup kills running apps and associated watchers
+func (hans *Hans) cleanup() {
 	if len(hans.Apps) > 0 {
 		for _, app := range hans.Apps {
 			if app.Running {
@@ -50,6 +45,15 @@ func (hans *Hans) cleanup(done chan<- bool) {
 			}
 		}
 	}
+}
+
+// cleanupOnExit kills running apps and associated watchers on exit
+// when done it writes to the passed in done channel
+func (hans *Hans) cleanupOnExit(done chan<- bool) {
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	<-sigs
+	hans.cleanup()
 	done <- true
 }
 
@@ -97,7 +101,7 @@ func (hans *Hans) Start() (<-chan bool, error) {
 		}
 	}
 	done := make(chan bool, 1)
-	go hans.cleanup(done)
+	go hans.cleanupOnExit(done)
 	return done, nil
 }
 
