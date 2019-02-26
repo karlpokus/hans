@@ -4,7 +4,7 @@ A process manager. A toy project.
 # requirements
 - apps should not spawn children of their own
 - apps should not deamonize
-- apps should log to stdout/stderr not files
+- apps should log to stdout/stderr - not files
 - app src watch option requires [fswatch](https://github.com/emcrisostomo/fswatch)
 
 # usage
@@ -16,12 +16,20 @@ apps:
   watch: path to a src dir or file to watch for changes. Will trigger a restart of bin # optional
   build: absolute path to build command to run on src changes before restart # optional
 opts:
-  cwd: global base path for relative paths # optional
-  ttl: timeout for app-, and watcher starts # optional, defaults to 1s
+  cwd: global base path for relative app paths # optional
+  ttl: global timeout for app and watcher startups # optional, defaults to 1s
 ```
 start
 ```bash
-$ go run main.go path/to/conf
+$ go run main.go
+```
+options
+- `-conf` path/to/config. Defaults to config.yaml
+- `-v` verbose logging. Defaults to true
+
+run test
+```bash
+$ RUNTIME=TEST go test -v ./pkg/hans/...
 ```
 
 # todos
@@ -40,6 +48,7 @@ $ go run main.go path/to/conf
 - [ ] os independent paths
 - [x] write tests and remove app dependency on hans
 - [ ] pass Env flags to children via `Cmd.Env`
+- [ ] log levels
 
 # license
 MIT

@@ -29,6 +29,7 @@ type Hans struct {
 	TTL       time.Duration
 	StdoutBuf bytes.Buffer
 	StderrBuf bytes.Buffer
+	Verbose   bool
 }
 
 // cleanup kills running apps and associated watchers
@@ -36,11 +37,15 @@ func (hans *Hans) cleanup() {
 	if len(hans.Apps) > 0 {
 		for _, app := range hans.Apps {
 			if app.Running {
-				hans.Stdout.Printf("killing %s", app.Name)
+				if hans.Verbose {
+					hans.Stdout.Printf("killing %s", app.Name)
+				}
 				app.kill()
 			}
 			if app.Watcher.Running {
-				hans.Stdout.Printf("killing %s watcher", app.Name)
+				if hans.Verbose {
+					hans.Stdout.Printf("killing %s watcher", app.Name)
+				}
 				app.Watcher.kill()
 			}
 		}
@@ -58,13 +63,15 @@ func (hans *Hans) cleanupOnExit(done chan<- bool) {
 }
 
 // Start starts all apps and associated watchers
-// it also prepares cleanup on main exit
+// it also prepares cleanup on exit
 func (hans *Hans) Start() (<-chan bool, error) {
 	if len(hans.Apps) == 0 {
 		return nil, errors.New("no apps to run")
 	}
 	for _, app := range hans.Apps {
-		hans.Stdout.Printf("%s starting", app.Name)
+		if hans.Verbose {
+			hans.Stdout.Printf("%s starting", app.Name)
+		}
 		app.init(hans.Opts.Cwd)
 		fail := make(chan error)
 		go app.run(fail)
@@ -78,11 +85,15 @@ func (hans *Hans) Start() (<-chan bool, error) {
 				hans.Stderr.Printf("%s did not start %s", app.Name, err)
 				continue
 			}
-			hans.Stdout.Printf("%s started", app.Name)
+			if hans.Verbose {
+				hans.Stdout.Printf("%s started", app.Name)
+			}
 		}
 
 		if len(app.Watch) > 0 {
-			hans.Stdout.Printf("%s watcher starting", app.Name)
+			if hans.Verbose {
+				hans.Stdout.Printf("%s watcher starting", app.Name)
+			}
 			restart := make(chan string)
 			go app.Watcher.Watch(fail, restart)
 
@@ -95,7 +106,9 @@ func (hans *Hans) Start() (<-chan bool, error) {
 					hans.Stderr.Printf("%s watcher did not start %s", app.Name, err)
 					continue
 				}
-				hans.Stdout.Printf("%s watcher started", app.Name)
+				if hans.Verbose {
+					hans.Stdout.Printf("%s watcher started", app.Name)
+				}
 				go hans.restart(restart) // TODO: only start one of these for all watchers?
 			}
 		}
@@ -156,7 +169,9 @@ func (hans *Hans) restart(c chan string) {
 }
 
 // setLogging sets the logging for hans based on RUNTIME env
-func (hans *Hans) setLogging() {
+// it also sets verbosity
+func (hans *Hans) setLogging(v bool) {
+	hans.Verbose = v
 	if RUNTIME == "TEST" {
 		hans.Stdout = log.New(&hans.StdoutBuf, "", 0)
 		hans.Stderr = log.New(&hans.StderrBuf, "", 0)
@@ -166,10 +181,10 @@ func (hans *Hans) setLogging() {
 	}
 }
 
-// New takes a path to a config file and returns a complete Hans type
-func New(path string) (*Hans, error) {
+// New takes a path to a config file, a verbose flag and returns a complete Hans type
+func New(path string, v bool) (*Hans, error) {
 	hans := &Hans{}
-	hans.setLogging()
+	hans.setLogging(v)
 	err := readConf(hans, path)
 	if err != nil {
 		return hans, err
