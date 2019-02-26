@@ -3,7 +3,6 @@ package main
 import (
 	"github.com/karlpokus/hans/pkg/hans"
 	"os"
-	"fmt"
 )
 
 func main() {
