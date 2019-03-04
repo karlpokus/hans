@@ -29,7 +29,6 @@ type Hans struct {
 	TTL       time.Duration
 	StdoutBuf bytes.Buffer
 	StderrBuf bytes.Buffer
-	Verbose   bool
 }
 
 type Child interface {
@@ -42,15 +41,11 @@ func (hans *Hans) cleanup() {
 	if len(hans.Apps) > 0 {
 		for _, app := range hans.Apps {
 			if app.Running {
-				if hans.Verbose {
-					hans.Stdout.Printf("killing %s", app.Name)
-				}
+				hans.Stdout.Printf("killing %s", app.Name)
 				app.Kill()
 			}
 			if app.Watcher.Running {
-				if hans.Verbose {
-					hans.Stdout.Printf("killing %s watcher", app.Name)
-				}
+				hans.Stdout.Printf("killing %s watcher", app.Name)
 				app.Watcher.Kill()
 			}
 		}
@@ -86,30 +81,20 @@ func (hans *Hans) Start() (<-chan bool, error) {
 		return nil, errors.New("no apps to run")
 	}
 	for _, app := range hans.Apps {
-		if hans.Verbose {
-			hans.Stdout.Printf("%s starting", app.Name)
-		}
+		hans.Stdout.Printf("%s starting", app.Name)
 		app.Init(hans.Opts.Cwd)
-
 		if err := hans.run(app); err != nil {
 			hans.Stderr.Printf("%s did not start: %s", app.Name, err)
 		}
-		if hans.Verbose {
-			hans.Stdout.Printf("%s started", app.Name)
-		}
+		hans.Stdout.Printf("%s started", app.Name)
 		if len(app.Watch) > 0 {
 			restart := make(chan string) // share this among all watchers?
 			app.Watcher.Init(restart, app)
-
-			if hans.Verbose {
-				hans.Stdout.Printf("%s watcher starting", app.Name)
-			}
+			hans.Stdout.Printf("%s watcher starting", app.Name)
 			if err := hans.run(app.Watcher); err != nil {
 				hans.Stderr.Printf("%s watcher did not start: %s", app.Name, err)
 			}
-			if hans.Verbose {
-				hans.Stdout.Printf("%s watcher started", app.Name)
-			}
+			hans.Stdout.Printf("%s watcher started", app.Name)
 			go hans.restart(restart) // TODO: only start one of these for all watchers?
 		}
 	}
@@ -168,15 +153,18 @@ func (hans *Hans) restart(c chan string) {
 	}
 }
 
-// setLogging sets the logging for hans based on RUNTIME env
-// it also sets verbosity
+// setLogging sets the logging for hans based on ENV and flags
+// verbosity only controls stdout
 func (hans *Hans) setLogging(v bool) {
-	hans.Verbose = v
 	if RUNTIME == "TEST" {
 		hans.Stdout = log.New(&hans.StdoutBuf, "", 0)
 		hans.Stderr = log.New(&hans.StderrBuf, "", 0)
 	} else {
-		hans.Stdout = log.New(os.Stdout, formatName("hans"), log.Ldate|log.Ltime)
+		if v {
+			hans.Stdout = log.New(os.Stdout, formatName("hans"), log.Ldate|log.Ltime)
+		} else {
+			hans.Stdout = log.New(ioutil.Discard, "", 0)
+		}
 		hans.Stderr = log.New(os.Stderr, formatName("hans"), log.Ldate|log.Ltime)
 	}
 }
