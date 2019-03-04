@@ -24,7 +24,7 @@ type App struct {
 	StderrBuf bytes.Buffer
 }
 
-func (app *App) run(fail chan error) {
+func (app *App) Run(fail chan error) {
 	err := app.Cmd.Start()
 	fail <- err
 	if err != nil {
@@ -52,17 +52,12 @@ func (app *App) setLogging() {
 	}
 }
 
-func (app *App) init(cwd string) {
+// init prepares an app to be run later
+func (app *App) Init(cwd string) {
 	app.Cwd = cwd
 	app.setLogging()
 	app.setCmd()
 	app.Watcher = &Watcher{}
-	if len(app.Watch) > 0 {
-		// "fswatch", "-r", "--exclude", ".*", "--include", "\.go$", app.Watch
-		app.Watcher.Cmd = execCommand("fswatch", "-r", app.path(app.Watch))
-		app.Watcher.AppName = app.Name
-		app.Watcher.Cmd.Stdout = app.Watcher
-	}
 }
 
 func (app *App) setCmd() {
@@ -73,10 +68,10 @@ func (app *App) setCmd() {
 
 func (app *App) restart(fail chan error) {
 	app.setCmd()
-	go app.run(fail)
+	go app.Run(fail)
 }
 
-func (app *App) kill() { // TODO: check return value of Kill()
+func (app *App) Kill() { // TODO: check return value of Kill()
 	app.Running = false
 	app.Cmd.Process.Kill()
 }
