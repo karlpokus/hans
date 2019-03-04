@@ -32,6 +32,11 @@ type Hans struct {
 	Verbose   bool
 }
 
+type Child interface {
+	Run(chan error)
+	Kill()
+}
+
 // cleanup kills running apps and associated watchers
 func (hans *Hans) cleanup() {
 	if len(hans.Apps) > 0 {
@@ -40,13 +45,13 @@ func (hans *Hans) cleanup() {
 				if hans.Verbose {
 					hans.Stdout.Printf("killing %s", app.Name)
 				}
-				app.kill()
+				app.Kill()
 			}
 			if app.Watcher.Running {
 				if hans.Verbose {
 					hans.Stdout.Printf("killing %s watcher", app.Name)
 				}
-				app.Watcher.kill()
+				app.Watcher.Kill()
 			}
 		}
 	}
@@ -62,6 +67,18 @@ func (hans *Hans) cleanupOnExit(done chan<- bool) {
 	done <- true
 }
 
+func (hans *Hans) run(c Child) error {
+	fail := make(chan error)
+	go c.Run(fail)
+
+	select {
+	case <-time.After(hans.TTL):
+		return fmt.Errorf("timeout")
+	case err := <-fail:
+		return err
+	}
+}
+
 // Start starts all apps and associated watchers
 // it also prepares cleanup on exit
 func (hans *Hans) Start() (<-chan bool, error) {
@@ -72,45 +89,28 @@ func (hans *Hans) Start() (<-chan bool, error) {
 		if hans.Verbose {
 			hans.Stdout.Printf("%s starting", app.Name)
 		}
-		app.init(hans.Opts.Cwd)
-		fail := make(chan error)
-		go app.run(fail)
+		app.Init(hans.Opts.Cwd)
 
-		select {
-		case <-time.After(hans.TTL):
-			hans.Stderr.Printf("%s timed out", app.Name)
-			continue
-		case err := <-fail:
-			if err != nil {
-				hans.Stderr.Printf("%s did not start %s", app.Name, err)
-				continue
-			}
-			if hans.Verbose {
-				hans.Stdout.Printf("%s started", app.Name)
-			}
+		if err := hans.run(app); err != nil {
+			hans.Stderr.Printf("%s did not start: %s", app.Name, err)
 		}
-
+		if hans.Verbose {
+			hans.Stdout.Printf("%s started", app.Name)
+		}
 		if len(app.Watch) > 0 {
+			restart := make(chan string) // share this among all watchers?
+			app.Watcher.Init(restart, app)
+
 			if hans.Verbose {
 				hans.Stdout.Printf("%s watcher starting", app.Name)
 			}
-			restart := make(chan string)
-			go app.Watcher.Watch(fail, restart)
-
-			select {
-			case <-time.After(hans.TTL):
-				hans.Stderr.Printf("%s watcher timed out", app.Name)
-				continue
-			case err := <-fail:
-				if err != nil {
-					hans.Stderr.Printf("%s watcher did not start %s", app.Name, err)
-					continue
-				}
-				if hans.Verbose {
-					hans.Stdout.Printf("%s watcher started", app.Name)
-				}
-				go hans.restart(restart) // TODO: only start one of these for all watchers?
+			if err := hans.run(app.Watcher); err != nil {
+				hans.Stderr.Printf("%s watcher did not start: %s", app.Name, err)
 			}
+			if hans.Verbose {
+				hans.Stdout.Printf("%s watcher started", app.Name)
+			}
+			go hans.restart(restart) // TODO: only start one of these for all watchers?
 		}
 	}
 	done := make(chan bool, 1)
@@ -148,7 +148,7 @@ func (hans *Hans) restart(c chan string) {
 			hans.Stdout.Printf("%s build succesful", app.Name)
 		}
 		if app.Running {
-			app.kill()
+			app.Kill()
 			hans.Stdout.Printf("restarting %s", app.Name)
 			fail := make(chan error)
 			app.restart(fail)

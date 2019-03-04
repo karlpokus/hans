@@ -33,19 +33,19 @@ func TestAppRun(t *testing.T) {
 	app := &App{
 		Bin: "apps/hello",
 	}
-	app.init(cwd)
+	app.Init(cwd)
 	fail := make(chan error)
-	go app.run(fail)
+	go app.Run(fail)
 
 	select {
 	case <-time.After(1 * time.Second):
 		t.Errorf("%s timed out", app.Name)
-		app.kill()
+		app.Kill()
 		t.FailNow()
 	case err := <-fail:
 		if err != nil {
 			t.Errorf("%s did not start %s", app.Name, err)
-			app.kill()
+			app.Kill()
 			t.FailNow()
 		}
 	}
@@ -57,7 +57,7 @@ func TestAppRun(t *testing.T) {
 	if app.Running == false {
 		t.Error("app should be running")
 	}
-	app.kill()
+	app.Kill()
 	if app.Running == true {
 		t.Error("app should not be running")
 	}
