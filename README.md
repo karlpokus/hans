@@ -29,7 +29,7 @@ options
 
 run test
 ```bash
-$ RUNTIME=TEST go test -v ./pkg/hans/...
+$ go test -v ./pkg/hans/...
 ```
 
 # todos
@@ -49,6 +49,8 @@ $ RUNTIME=TEST go test -v ./pkg/hans/...
 - [x] write tests and remove app dependency on hans
 - [ ] pass Env flags to children via `Cmd.Env`
 - [ ] log levels
+- [x] `Cmd.Dir` for global pwd
+- [x] use conf structs
 
 # license
 MIT

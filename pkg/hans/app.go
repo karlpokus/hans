@@ -1,7 +1,7 @@
 package hans
 
 import (
-	"bytes"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -10,18 +10,22 @@ import (
 var execCommand = exec.Command
 
 type App struct {
-	Stdout    *log.Logger
-	Stderr    *log.Logger
-	Cmd       *exec.Cmd
-	Running   bool
-	Name      string
-	Bin       string
-	Watch     string
-	Build     string
-	Watcher   *Watcher
-	Cwd       string
-	StdoutBuf bytes.Buffer
-	StderrBuf bytes.Buffer
+	Stdout  *log.Logger
+	Stderr  *log.Logger
+	Cmd     *exec.Cmd
+	Running bool
+	Name    string
+	Bin     string
+	Watch   string
+	Build   string
+	Watcher *Watcher
+	Cwd     string
+}
+
+type AppConf struct {
+	StdoutWriter io.Writer
+	StderrWriter io.Writer
+	Cwd          string
 }
 
 func (app *App) Run(fail chan error) {
@@ -34,36 +38,33 @@ func (app *App) Run(fail chan error) {
 	app.Cmd.Wait() // blocks and closes the pipe on cmd exit
 }
 
-func (app *App) path(p string) string {
-	if len(app.Cwd) > 0 {
-		return app.Cwd + p
-	}
-	return p
-}
-
-// setLogging sets the logging for hans based on RUNTIME env
-func (app *App) setLogging() {
-	if RUNTIME == "TEST" {
-		app.Stdout = log.New(&app.StdoutBuf, "", 0)
-		app.Stderr = log.New(&app.StderrBuf, "", 0)
+// setLogging sets the logging for the app
+func (app *App) setLogging(conf *AppConf) {
+	if conf.StdoutWriter != nil {
+		app.Stdout = log.New(conf.StdoutWriter, "", 0)
 	} else {
 		app.Stdout = log.New(os.Stdout, formatName(app.Name), log.Ldate|log.Ltime)
+	}
+	if conf.StderrWriter != nil {
+		app.Stdout = log.New(conf.StderrWriter, "", 0)
+	} else {
 		app.Stderr = log.New(os.Stderr, formatName(app.Name), log.Ldate|log.Ltime)
 	}
 }
 
 // init prepares an app to be run later
-func (app *App) Init(cwd string) {
-	app.Cwd = cwd
-	app.setLogging()
+func (app *App) Init(conf *AppConf) {
+	app.Cwd = conf.Cwd
+	app.setLogging(conf)
 	app.setCmd()
 	app.Watcher = &Watcher{}
 }
 
 func (app *App) setCmd() {
 	cmd, args := splitBin(app.Bin)
-	app.Cmd = execCommand(app.path(cmd), args...)
+	app.Cmd = execCommand(cmd, args...)
 	app.Cmd.Stdout = app
+	app.Cmd.Dir = app.Cwd
 }
 
 func (app *App) restart(fail chan error) {
@@ -71,14 +72,16 @@ func (app *App) restart(fail chan error) {
 	go app.Run(fail)
 }
 
-func (app *App) Kill() { // TODO: check return value of Kill()
+func (app *App) Kill() {
 	app.Running = false
 	app.Cmd.Process.Kill()
 }
 
 func (app *App) build() ([]byte, error) {
 	cmd, args := splitBin(app.Build)
-	out, err := execCommand(cmd, args...).CombinedOutput() // includes run
+	Cmd := execCommand(cmd, args...)
+	Cmd.Dir = app.Cwd
+	out, err := Cmd.CombinedOutput() // includes run
 	if err != nil {
 		return out, err
 	}

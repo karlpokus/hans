@@ -17,8 +17,8 @@ func TestHansNew(t *testing.T) {
 		t.Errorf("Hans New failed: %v", err)
 		t.FailNow()
 	}
-	if hans.Opts.Cwd != cwd || hans.Opts.TTL != "5s" || hans.Verbose != true {
-		t.Errorf("Wrong Hans fields set: %v, %v, %v", hans.Opts.Cwd, hans.Opts.TTL, hans.Verbose)
+	if hans.Opts.Cwd != cwd || hans.Opts.TTL != "5s" {
+		t.Errorf("Wrong Hans fields set: %v, %v", hans.Opts.Cwd, hans.Opts.TTL)
 		t.FailNow()
 	}
 }

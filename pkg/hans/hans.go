@@ -82,14 +82,19 @@ func (hans *Hans) Start() (<-chan bool, error) {
 	}
 	for _, app := range hans.Apps {
 		hans.Stdout.Printf("%s starting", app.Name)
-		app.Init(hans.Opts.Cwd)
+		app.Init(&AppConf{
+			Cwd: hans.Opts.Cwd,
+		})
 		if err := hans.run(app); err != nil {
 			hans.Stderr.Printf("%s did not start: %s", app.Name, err)
 		}
 		hans.Stdout.Printf("%s started", app.Name)
 		if len(app.Watch) > 0 {
 			restart := make(chan string) // share this among all watchers?
-			app.Watcher.Init(restart, app)
+			app.Watcher.Init(&WatcherConf{
+				Restart: restart,
+				App: app,
+			})
 			hans.Stdout.Printf("%s watcher starting", app.Name)
 			if err := hans.run(app.Watcher); err != nil {
 				hans.Stderr.Printf("%s watcher did not start: %s", app.Name, err)

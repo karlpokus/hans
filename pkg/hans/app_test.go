@@ -11,29 +11,15 @@ func trimBuf(b *bytes.Buffer) string {
 	return strings.TrimSpace(b.String())
 }
 
-func TestAppPath(t *testing.T) {
-	// empty init
-	app := &App{}
-	got := app.path("/bar")
-	want := "/bar"
-	if got != want {
-		t.Errorf("got %s, want %s", got, want)
-	}
-	// Cwd set
-	app.Cwd = "foo"
-	got = app.path("/bar")
-	want = "foo/bar"
-	if got != want {
-		t.Errorf("got %s, want %s", got, want)
-	}
-}
-
 func TestAppRun(t *testing.T) {
-	cwd := "/Users/pokus/golang/src/github.com/karlpokus/hans/test/"
-	app := &App{
+	app := &App{ // don't read conf file
 		Bin: "apps/hello",
 	}
-	app.Init(cwd)
+	var stdoutBuf bytes.Buffer
+	app.Init(&AppConf{
+		Cwd: "/Users/pokus/golang/src/github.com/karlpokus/hans/test/",
+		StdoutWriter: &stdoutBuf,
+	})
 	fail := make(chan error)
 	go app.Run(fail)
 
@@ -50,9 +36,9 @@ func TestAppRun(t *testing.T) {
 		}
 	}
 	time.Sleep(1 * time.Second) // wait for app to start
-
-	if trimBuf(&app.StdoutBuf) != "hello" {
-		t.Errorf("app.StdoutBuf fail: %s", trimBuf(&app.StdoutBuf))
+	stdout := trimBuf(&stdoutBuf)
+	if stdout != "hello" {
+		t.Errorf("app.StdoutBuf fail: %s", stdout)
 	}
 	if app.Running == false {
 		t.Error("app should be running")

@@ -4,7 +4,7 @@ apps:
   - name: bixa
     bin: apps/bixa bixa 15
     watch: src/bixa
-    build: go build -o /Users/pokus/golang/src/github.com/karlpokus/hans/example/apps/bixa /Users/pokus/golang/src/github.com/karlpokus/hans/example/src/bixa/bixa.go
+    build: go build -o apps/bixa src/bixa/bixa.go
   - name: rex
     bin: apps/rex
   - name: mys

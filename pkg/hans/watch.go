@@ -8,7 +8,12 @@ type Watcher struct {
 	Cmd     *exec.Cmd
 	Running bool
 	AppName string
-	Ch      chan string
+	Restart chan string
+}
+
+type WatcherConf struct {
+	Restart chan string
+	App *App
 }
 
 func (w *Watcher) Run(fail chan error) {
@@ -22,16 +27,17 @@ func (w *Watcher) Run(fail chan error) {
 	w.Cmd.Wait()
 }
 
-func (w *Watcher) Init(restart chan string, app *App) {
+func (w *Watcher) Init(conf *WatcherConf) {
 	// "fswatch", "-r", "--exclude", ".*", "--include", "\.go$", app.Watch
-	w.Cmd = execCommand("fswatch", "-r", app.path(app.Watch))
-	w.AppName = app.Name
+	w.Cmd = execCommand("fswatch", "-r", conf.App.Watch)
+	w.Cmd.Dir = conf.App.Cwd
 	w.Cmd.Stdout = w
-	w.Ch = restart
+	w.Restart = conf.Restart
+	w.AppName = conf.App.Name
 }
 
 func (w Watcher) Write(p []byte) (int, error) {
-	w.Ch <- w.AppName
+	w.Restart <- w.AppName
 	return len(p), nil
 }
 
