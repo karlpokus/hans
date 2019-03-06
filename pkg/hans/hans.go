@@ -69,33 +69,46 @@ func (hans *Hans) run(c Child) error {
 	}
 }
 
+func (hans *Hans) shouldStartWatcher() bool {
+	for _, app := range hans.Apps {
+		if app.Watch != "" {
+			return true
+		}
+	}
+	return false
+}
+
 // Start starts all apps and associated watchers
-// it also prepares cleanup on exit
+// it also prepares cleanup on hans exit
 func (hans *Hans) Start() (<-chan bool, error) {
 	if len(hans.Apps) == 0 {
 		return nil, errors.New("no apps to run")
 	}
+	var restart chan string
+	if hans.shouldStartWatcher() {
+		restart = make(chan string)
+		go hans.restart(restart)
+	}
 	for _, app := range hans.Apps {
-		hans.Stdout.Printf("%s starting", app.Name)
 		app.Init(&AppConf{
 			Cwd: hans.Opts.Cwd,
 		})
-		if err := hans.run(app); err != nil {
+		err := hans.run(app)
+		if err != nil {
 			hans.Stderr.Printf("%s did not start: %s", app.Name, err)
 		}
 		hans.Stdout.Printf("%s started", app.Name)
-		if len(app.Watch) > 0 {
-			restart := make(chan string) // share this among all watchers?
+
+		if app.Watch != "" {
 			app.Watcher.Init(&WatcherConf{
 				Restart: restart,
 				App: app,
 			})
-			hans.Stdout.Printf("%s watcher starting", app.Name)
-			if err := hans.run(app.Watcher); err != nil {
+			err := hans.run(app.Watcher)
+			if err != nil {
 				hans.Stderr.Printf("%s watcher did not start: %s", app.Name, err)
 			}
 			hans.Stdout.Printf("%s watcher started", app.Name)
-			go hans.restart(restart) // TODO: only start one of these for all watchers?
 		}
 	}
 	done := make(chan bool, 1)
