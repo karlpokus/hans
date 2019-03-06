@@ -5,7 +5,7 @@ import (
 	"flag"
 )
 
-var v = flag.Bool("v", true, "toggle verbose logging")
+var v = flag.Bool("v", false, "toggle verbose logging")
 var conf = flag.String("conf", "conf.yaml", "config file path")
 
 func main() {
