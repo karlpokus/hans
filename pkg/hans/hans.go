@@ -1,7 +1,6 @@
 package hans
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"gopkg.in/yaml.v2"
@@ -14,8 +13,6 @@ import (
 	"time"
 )
 
-var RUNTIME = os.Getenv("RUNTIME")
-
 type Opt struct {
 	Cwd string
 	TTL string
@@ -27,8 +24,6 @@ type Hans struct {
 	Apps      []*App
 	Opts      Opt
 	TTL       time.Duration
-	StdoutBuf bytes.Buffer
-	StderrBuf bytes.Buffer
 }
 
 type Child interface {
@@ -158,20 +153,14 @@ func (hans *Hans) restart(c chan string) {
 	}
 }
 
-// setLogging sets the logging for hans based on ENV and flags
-// verbosity only controls stdout
+// setLogging sets logging level for hans based on verbosity flag
 func (hans *Hans) setLogging(v bool) {
-	if RUNTIME == "TEST" {
-		hans.Stdout = log.New(&hans.StdoutBuf, "", 0)
-		hans.Stderr = log.New(&hans.StderrBuf, "", 0)
+	if v {
+		hans.Stdout = log.New(os.Stdout, formatName("hans"), log.Ldate|log.Ltime)
 	} else {
-		if v {
-			hans.Stdout = log.New(os.Stdout, formatName("hans"), log.Ldate|log.Ltime)
-		} else {
-			hans.Stdout = log.New(ioutil.Discard, "", 0)
-		}
-		hans.Stderr = log.New(os.Stderr, formatName("hans"), log.Ldate|log.Ltime)
+		hans.Stdout = log.New(ioutil.Discard, "", 0)
 	}
+	hans.Stderr = log.New(os.Stderr, formatName("hans"), log.Ldate|log.Ltime)
 }
 
 // New takes a path to a config file, a verbose flag and returns a complete Hans type
@@ -202,11 +191,6 @@ func readConf(hans *Hans, path string) error {
 	// TODO: validate fields
 	return nil
 }
-
-/*func absPath(p string) string {
-	pwd, _ := os.Getwd()
-	return pwd + p
-}*/
 
 // formatName limits app name length for logging purposes
 func formatName(name string) string {
