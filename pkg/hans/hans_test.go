@@ -1,6 +1,9 @@
 package hans
 
-import "testing"
+import (
+	"testing"
+	"fmt"
+)
 
 /*
 	TODO:
@@ -9,7 +12,7 @@ import "testing"
 */
 
 var confPath = "/Users/pokus/golang/src/github.com/karlpokus/hans/test/conf.yaml"
-var cwd = "/Users/pokus/golang/src/github.com/karlpokus/hans/test/"
+var cwd = "/Users/pokus/golang/src/github.com/karlpokus/hans/test"
 
 func TestHansNew(t *testing.T) {
 	hans, err := New(confPath, true)
@@ -25,20 +28,28 @@ func TestHansNew(t *testing.T) {
 
 func TestHansStart(t *testing.T) {
 	hans, err := New(confPath, false)
+	if err := shouldBeRunning(false, hans.Apps); err != nil {
+		t.Error(err)
+	}
 	err = hans.Start()
 	if err != nil {
 		t.Errorf("Hans Start failed: %v", err)
 		t.FailNow()
 	}
-	for _, app := range hans.Apps {
-		if !app.Running {
-			t.Errorf("%s is not running after Hans Start", app.Name)
-		}
+	if err := shouldBeRunning(true, hans.Apps); err != nil {
+		t.Error(err)
 	}
 	hans.cleanup()
-	for _, app := range hans.Apps {
-		if app.Running {
-			t.Errorf("%s is running after Hans cleanup", app.Name)
+	if err := shouldBeRunning(false, hans.Apps); err != nil {
+		t.Error(err)
+	}
+}
+
+func shouldBeRunning(b bool, apps []*App) error {
+	for _, app := range apps {
+		if app.Running != b {
+			return fmt.Errorf("%s running state should be %v", app.Name, !b)
 		}
 	}
+	return nil
 }
