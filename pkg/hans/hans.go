@@ -126,42 +126,43 @@ func (hans *Hans) appFromName(appName string) *App {
 	return &App{}
 }
 
+func (hans *Hans) build(app *App) error {
+	// TODO remove chatter
+	hans.Stdout.Printf("detected change on %s src", app.Name)
+	hans.Stdout.Printf("attempting %s restart", app.Name)
+	if app.Build != "" {
+		hans.Stdout.Printf("rebuilding %s first", app.Name)
+		res, err := app.build()
+		if err != nil {
+			hans.Stderr.Printf("%s build err: %v", app.Name, err)
+			hans.Stderr.Printf("%s", res)
+			hans.Stderr.Printf("%s restart aborted", app.Name)
+			return err
+		}
+		hans.Stdout.Printf("%s build succesful", app.Name)
+	}
+	return nil
+}
+
 // restart restarts an app when signaled from a watcher
 // also runs build before restarting if the build field is set in the apps config
 func (hans *Hans) restart(c chan string) {
 	for {
 		// TODO: wait for build and restart if multiple watchers share the chan
 		app := hans.appFromName(<-c)
-		hans.Stdout.Printf("detected change on %s src", app.Name)
-		hans.Stdout.Printf("attempting %s restart", app.Name)
-		if len(app.Build) > 0 {
-			hans.Stdout.Printf("rebuilding %s first", app.Name)
-			res, err := app.build()
-			if err != nil {
-				hans.Stderr.Printf("%s build err: %v", app.Name, err)
-				hans.Stderr.Printf("%s", res)
-				hans.Stderr.Printf("%s restart aborted", app.Name)
-				continue // don't restart
-			}
-			hans.Stdout.Printf("%s build succesful", app.Name)
+		err := hans.build(app)
+		if err != nil {
+			continue // don't restart
 		}
 		if app.Running {
-			app.Kill()
 			hans.Stdout.Printf("restarting %s", app.Name)
-			fail := make(chan error)
-			app.restart(fail)
-
-			select {
-			case <-time.After(hans.TTL):
-				hans.Stderr.Printf("%s timed out", app.Name)
-				continue
-			case err := <-fail:
-				if err != nil {
-					hans.Stderr.Printf("%s did not restart %s", app.Name, err)
-					continue
-				}
-				hans.Stdout.Printf("%s restarted", app.Name)
+			app.Kill()
+			app.setCmd()
+			err := hans.run(app)
+			if err != nil {
+				hans.Stderr.Printf("%s did not restart: %s", app.Name, err)
 			}
+			hans.Stdout.Printf("%s restarted", app.Name)
 		}
 	}
 }

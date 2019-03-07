@@ -67,11 +67,6 @@ func (app *App) setCmd() {
 	app.Cmd.Dir = app.Cwd
 }
 
-func (app *App) restart(fail chan error) {
-	app.setCmd()
-	go app.Run(fail)
-}
-
 func (app *App) Kill() {
 	app.Running = false
 	app.Cmd.Process.Kill()
@@ -81,11 +76,7 @@ func (app *App) build() ([]byte, error) {
 	cmd, args := splitBin(app.Build)
 	Cmd := execCommand(cmd, args...)
 	Cmd.Dir = app.Cwd
-	out, err := Cmd.CombinedOutput() // includes run
-	if err != nil {
-		return out, err
-	}
-	return out, nil
+	return Cmd.CombinedOutput() // includes run
 }
 
 func (app *App) Write(p []byte) (int, error) {
