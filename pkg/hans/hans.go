@@ -1,7 +1,6 @@
 package hans
 
 import (
-	"errors"
 	"fmt"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
@@ -36,12 +35,12 @@ func (hans *Hans) cleanup() {
 	if len(hans.Apps) > 0 {
 		for _, app := range hans.Apps {
 			if app.Running {
-				hans.Stdout.Printf("killing %s", app.Name)
-				app.Kill()
+				hans.kill(app)
+				hans.Stdout.Printf("%s killed", app.Name)
 			}
 			if app.Watcher.Running {
-				hans.Stdout.Printf("killing %s watcher", app.Name)
-				app.Watcher.Kill()
+				hans.kill(app.Watcher)
+				hans.Stdout.Printf("%s watcher killed", app.Name)
 			}
 		}
 	}
@@ -55,6 +54,11 @@ func (hans *Hans) cleanupOnExit(done chan<- bool) {
 	<-sigs
 	hans.cleanup()
 	done <- true
+}
+
+// kill kills a child
+func (hans *Hans) kill(c Child) {
+	c.Kill()
 }
 
 // run runs a child
@@ -89,8 +93,8 @@ func (hans *Hans) Wait() <-chan bool {
 
 // Start inits and starts all apps and associated watchers
 func (hans *Hans) Start() error {
-	if len(hans.Apps) == 0 { // TODO: move to New
-		return errors.New("no apps to run")
+	if len(hans.Apps) == 0 { // TODO: move check to New
+		return fmt.Errorf("no apps to run")
 	}
 	var restart chan string
 	if hans.shouldStartWatcher() {
@@ -104,6 +108,7 @@ func (hans *Hans) Start() error {
 		err := hans.run(app)
 		if err != nil {
 			hans.Stderr.Printf("%s did not start: %s", app.Name, err)
+			continue // don't start watcher
 		}
 		hans.Stdout.Printf("%s started", app.Name)
 
@@ -115,6 +120,7 @@ func (hans *Hans) Start() error {
 			err := hans.run(app.Watcher)
 			if err != nil {
 				hans.Stderr.Printf("%s watcher did not start: %s", app.Name, err)
+				continue
 			}
 			hans.Stdout.Printf("%s watcher started", app.Name)
 		}
