@@ -47,8 +47,8 @@ func (hans *Hans) cleanup() {
 	}
 }
 
-// cleanupOnExit kills running apps and associated watchers on exit
-// when done it writes to the passed in done channel
+// cleanupOnExit runs cleanup on hans exit
+// then writes to the done channel
 func (hans *Hans) cleanupOnExit(done chan<- bool) {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
@@ -57,6 +57,7 @@ func (hans *Hans) cleanupOnExit(done chan<- bool) {
 	done <- true
 }
 
+// run runs a child
 func (hans *Hans) run(c Child) error {
 	fail := make(chan error)
 	go c.Run(fail)
@@ -69,6 +70,7 @@ func (hans *Hans) run(c Child) error {
 	}
 }
 
+// shouldStartWatcher determines if we should run hans.restart
 func (hans *Hans) shouldStartWatcher() bool {
 	for _, app := range hans.Apps {
 		if app.Watch != "" {
@@ -78,11 +80,17 @@ func (hans *Hans) shouldStartWatcher() bool {
 	return false
 }
 
-// Start starts all apps and associated watchers
-// it also prepares cleanup on hans exit
-func (hans *Hans) Start() (<-chan bool, error) {
-	if len(hans.Apps) == 0 {
-		return nil, errors.New("no apps to run")
+// Wait prepares resource cleanup on hans exit
+func (hans *Hans) Wait() <-chan bool {
+	done := make(chan bool, 1)
+	go hans.cleanupOnExit(done)
+	return done
+}
+
+// Start inits and starts all apps and associated watchers
+func (hans *Hans) Start() error {
+	if len(hans.Apps) == 0 { // TODO: move to New
+		return errors.New("no apps to run")
 	}
 	var restart chan string
 	if hans.shouldStartWatcher() {
@@ -90,7 +98,7 @@ func (hans *Hans) Start() (<-chan bool, error) {
 		go hans.restart(restart)
 	}
 	for _, app := range hans.Apps {
-		app.Init(&AppConf{
+		app.Init(&AppConf{ // TODO: move init to New
 			Cwd: hans.Opts.Cwd,
 		})
 		err := hans.run(app)
@@ -111,9 +119,7 @@ func (hans *Hans) Start() (<-chan bool, error) {
 			hans.Stdout.Printf("%s watcher started", app.Name)
 		}
 	}
-	done := make(chan bool, 1)
-	go hans.cleanupOnExit(done)
-	return done, nil
+	return nil
 }
 
 // appFromName returns an App type from an app name

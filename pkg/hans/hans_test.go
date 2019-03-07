@@ -25,7 +25,7 @@ func TestHansNew(t *testing.T) {
 
 func TestHansStart(t *testing.T) {
 	hans, err := New(confPath, false)
-	_, err = hans.Start() // ignore done chan
+	err = hans.Start()
 	if err != nil {
 		t.Errorf("Hans Start failed: %v", err)
 		t.FailNow()

@@ -14,9 +14,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	done, err := h.Start()
+	err = h.Start()
 	if err != nil {
 		panic(err)
 	}
-	<-done
+	<-h.Wait()
 }

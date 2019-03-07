@@ -51,6 +51,7 @@ $ go test -v ./pkg/hans/...
 - [ ] log levels
 - [x] `Cmd.Dir` for global pwd
 - [x] use conf structs
+- [ ] split confs on main, app, watcher
 
 # license
 MIT
