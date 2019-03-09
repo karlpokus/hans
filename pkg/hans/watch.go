@@ -13,7 +13,7 @@ type Watcher struct {
 
 type WatcherConf struct {
 	Restart chan string
-	App *App
+	App     *App
 }
 
 func (w *Watcher) Run(fail chan error) {
@@ -37,7 +37,7 @@ func (w *Watcher) Init(conf *WatcherConf) {
 }
 
 func (w Watcher) Write(p []byte) (int, error) {
-	w.Restart <- w.AppName
+	w.Restart <- w.AppName // check chan != nil?
 	return len(p), nil
 }
 
