@@ -18,11 +18,11 @@ type Opt struct {
 }
 
 type Hans struct {
-	Stdout    *log.Logger
-	Stderr    *log.Logger
-	Apps      []*App
-	Opts      Opt
-	TTL       time.Duration
+	Stdout *log.Logger
+	Stderr *log.Logger
+	Apps   []*App
+	Opts   Opt
+	TTL    time.Duration
 }
 
 type Child interface {
@@ -91,32 +91,16 @@ func (hans *Hans) Wait() <-chan bool {
 	return done
 }
 
-// Start inits and starts all apps and associated watchers
+// Start starts all apps and associated watchers
 func (hans *Hans) Start() error {
-	if len(hans.Apps) == 0 { // TODO: move check to New
-		return fmt.Errorf("no apps to run")
-	}
-	var restart chan string
-	if hans.shouldStartWatcher() {
-		restart = make(chan string)
-		go hans.restart(restart)
-	}
 	for _, app := range hans.Apps {
-		app.Init(&AppConf{ // TODO: move init to New
-			Cwd: hans.Opts.Cwd,
-		})
 		err := hans.run(app)
 		if err != nil {
 			hans.Stderr.Printf("%s did not start: %s", app.Name, err)
 			continue // don't start watcher
 		}
 		hans.Stdout.Printf("%s started", app.Name)
-
 		if app.Watch != "" {
-			app.Watcher.Init(&WatcherConf{
-				Restart: restart,
-				App: app,
-			})
 			err := hans.run(app.Watcher)
 			if err != nil {
 				hans.Stderr.Printf("%s watcher did not start: %s", app.Name, err)
@@ -189,7 +173,7 @@ func (hans *Hans) setLogging(v bool) {
 	hans.Stderr = log.New(os.Stderr, formatName("hans"), log.Ldate|log.Ltime)
 }
 
-// New takes a path to a config file, a verbose flag and returns a complete Hans type
+// New inits apps and watchers and returns a complete Hans type
 func New(path string, v bool) (*Hans, error) {
 	hans := &Hans{}
 	hans.setLogging(v)
@@ -197,11 +181,31 @@ func New(path string, v bool) (*Hans, error) {
 	if err != nil {
 		return hans, err
 	}
+	if len(hans.Apps) == 0 {
+		return hans, fmt.Errorf("no apps to run")
+	}
 	// set defaults
 	if hans.Opts.TTL == "" {
 		hans.Opts.TTL = "1s"
 	}
 	hans.TTL, err = time.ParseDuration(hans.Opts.TTL)
+	// init apps and watchers
+	var restart chan string
+	if hans.shouldStartWatcher() {
+		restart = make(chan string)
+		go hans.restart(restart)
+	}
+	for _, app := range hans.Apps {
+		app.Init(&AppConf{
+			Cwd: hans.Opts.Cwd,
+		})
+		if app.Watch != "" {
+			app.Watcher.Init(&WatcherConf{
+				Restart: restart,
+				App:     app,
+			})
+		}
+	}
 	return hans, err
 }
 

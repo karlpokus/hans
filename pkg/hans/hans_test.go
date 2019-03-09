@@ -1,8 +1,8 @@
 package hans
 
 import (
-	"testing"
 	"fmt"
+	"testing"
 )
 
 /*
@@ -28,11 +28,14 @@ func TestHansNew(t *testing.T) {
 
 func TestHansStart(t *testing.T) {
 	hans, err := New(confPath, false)
+	if err != nil {
+		t.Errorf("Hans New failed: %v", err)
+		t.FailNow()
+	}
 	if err := shouldBeRunning(false, hans.Apps); err != nil {
 		t.Error(err)
 	}
-	err = hans.Start()
-	if err != nil {
+	if err := hans.Start(); err != nil {
 		t.Errorf("Hans Start failed: %v", err)
 		t.FailNow()
 	}
@@ -49,6 +52,9 @@ func shouldBeRunning(b bool, apps []*App) error {
 	for _, app := range apps {
 		if app.Running != b {
 			return fmt.Errorf("%s running state should be %v", app.Name, !b)
+		}
+		if app.Watch != "" && app.Watcher.Running != b {
+			return fmt.Errorf("%s watcher running state should be %v", app.Name, !b)
 		}
 	}
 	return nil
