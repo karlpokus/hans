@@ -1,6 +1,8 @@
 # hans
 A process manager. A toy project.
 
+A process manager can be two things 1: a development tool that restarts processes on file change and provide a shared log stream, and 2: a production runtime daemon to manage process life cycle, scaling and resource consumption. I originally wanted both but I'll settle for 1 for now.
+
 # requirements
 - apps should not spawn children of their own
 - apps should not deamonize
@@ -34,17 +36,16 @@ $ go test -v ./pkg/hans/...
 
 # todos
 - [x] mvp
-- [ ] hansd
-- [ ] hansctl
+- [x] hansd - won't do
+- [x] hansctl - won't do
+- [x] poll process cpu, mem - won't do
+- [x] scale app - won't do
 - [x] config file
 - [x] app src watcher option
 - [x] app src rebuild on change
 - [x] app restart on change
-- [ ] status
-- [ ] poll process cpu, mem
 - [ ] colourized output
 - [x] relative paths in config
-- [ ] scale app
 - [ ] os independent paths
 - [x] write tests and remove app dependency on hans
 - [ ] pass Env flags to children via `Cmd.Env`
@@ -52,6 +53,8 @@ $ go test -v ./pkg/hans/...
 - [x] `Cmd.Dir` for global pwd
 - [x] use conf structs
 - [ ] split confs on main, app, watcher
+- [ ] check `Cmd.ProcessState` if proc exits on its own
+- [ ] notification channel on app restart
 
 # license
 MIT
