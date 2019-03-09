@@ -18,8 +18,8 @@ type App struct {
 	Bin     string
 	Watch   string
 	Build   string
-	Watcher *Watcher
-	Cwd     string
+	*Watcher
+	Cwd string
 }
 
 type AppConf struct {
