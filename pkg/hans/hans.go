@@ -72,8 +72,8 @@ func (hans *Hans) run(c Child) error {
 	}
 }
 
-// shouldStartWatcher determines if we should run hans.restart
-func (hans *Hans) shouldStartWatcher() bool {
+// shouldStartRestarter determines if we should run hans.restart
+func (hans *Hans) shouldStartRestarter() bool {
 	for _, app := range hans.Apps {
 		if app.Watch != "" {
 			return true
@@ -189,7 +189,7 @@ func New(path string, v bool) (*Hans, error) {
 	hans.TTL, err = time.ParseDuration(hans.Opts.TTL)
 	// init apps and watchers
 	var restart chan string
-	if hans.shouldStartWatcher() {
+	if hans.shouldStartRestarter() {
 		restart = make(chan string)
 		go hans.restart(restart)
 	}
