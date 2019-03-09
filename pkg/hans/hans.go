@@ -32,16 +32,14 @@ type Child interface {
 
 // cleanup kills running apps and associated watchers
 func (hans *Hans) cleanup() {
-	if len(hans.Apps) > 0 {
-		for _, app := range hans.Apps {
-			if app.Running {
-				hans.kill(app)
-				hans.Stdout.Printf("%s killed", app.Name)
-			}
-			if app.Watcher.Running {
-				hans.kill(app.Watcher)
-				hans.Stdout.Printf("%s watcher killed", app.Name)
-			}
+	for _, app := range hans.Apps {
+		if app.Running {
+			hans.kill(app)
+			hans.Stdout.Printf("%s killed", app.Name)
+		}
+		if app.Watcher.Running {
+			hans.kill(app.Watcher)
+			hans.Stdout.Printf("%s watcher killed", app.Name)
 		}
 	}
 }
