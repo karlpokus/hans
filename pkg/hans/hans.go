@@ -2,7 +2,6 @@ package hans
 
 import (
 	"fmt"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
 	"os"
@@ -10,6 +9,9 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"gopkg.in/yaml.v2"
+	"github.com/fatih/color"
 )
 
 type Opt struct {
@@ -164,11 +166,11 @@ func (hans *Hans) restart(c chan string) {
 // setLogging sets logging level for hans based on verbosity flag
 func (hans *Hans) setLogging(v bool) {
 	if v {
-		hans.Stdout = log.New(os.Stdout, formatName("hans"), log.Ldate|log.Ltime)
+		hans.Stdout = log.New(os.Stdout, formatName("hans", color.BlueString), log.Ldate|log.Ltime)
 	} else {
 		hans.Stdout = log.New(ioutil.Discard, "", 0)
 	}
-	hans.Stderr = log.New(os.Stderr, formatName("hans"), log.Ldate|log.Ltime)
+	hans.Stderr = log.New(os.Stderr, formatName("hans", color.RedString), log.Ldate|log.Ltime)
 }
 
 // New inits apps and watchers and returns a complete Hans type
@@ -221,12 +223,12 @@ func readConf(hans *Hans, path string) error {
 }
 
 // formatName limits app name length for logging purposes
-func formatName(name string) string {
+func formatName(name string, colorfn func(string, ...interface{}) string) string {
 	const maxChars int = 9
 	if len(name) >= maxChars {
 		return name[:9] + " "
 	}
-	return fmt.Sprintf("%-10v", name)
+	return colorfn(fmt.Sprintf("%-10v", name))
 }
 
 // splitBin formats a space-separated string command

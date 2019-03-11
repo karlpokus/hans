@@ -5,6 +5,8 @@ import (
 	"log"
 	"os"
 	"os/exec"
+
+	"github.com/fatih/color"
 )
 
 var execCommand = exec.Command
@@ -43,12 +45,12 @@ func (app *App) setLogging(conf *AppConf) {
 	if conf.StdoutWriter != nil {
 		app.Stdout = log.New(conf.StdoutWriter, "", 0)
 	} else {
-		app.Stdout = log.New(os.Stdout, formatName(app.Name), log.Ldate|log.Ltime)
+		app.Stdout = log.New(os.Stdout, formatName(app.Name, color.GreenString), log.Ldate|log.Ltime)
 	}
 	if conf.StderrWriter != nil {
 		app.Stdout = log.New(conf.StderrWriter, "", 0)
 	} else {
-		app.Stderr = log.New(os.Stderr, formatName(app.Name), log.Ldate|log.Ltime)
+		app.Stderr = log.New(os.Stderr, formatName(app.Name, color.RedString), log.Ldate|log.Ltime)
 	}
 }
 

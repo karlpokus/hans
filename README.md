@@ -44,7 +44,7 @@ $ go test -v ./pkg/hans/...
 - [x] app src watcher option
 - [x] app src rebuild on change
 - [x] app restart on change
-- [ ] colourized output
+- [x] colourize output
 - [x] relative paths in config
 - [ ] os independent paths
 - [x] write tests and remove app dependency on hans
