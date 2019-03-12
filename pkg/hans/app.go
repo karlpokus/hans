@@ -11,17 +11,26 @@ import (
 
 var execCommand = exec.Command
 
+type LogWriter struct {
+	Out *log.Logger
+}
+
+func (w *LogWriter) Write(b []byte) (int, error) {
+	w.Out.Print(string(b))
+	return len(b), nil
+}
+
 type App struct {
-	Stdout  *log.Logger
-	Stderr  *log.Logger
+	Stdout  *LogWriter
+	Stderr  *LogWriter
 	Cmd     *exec.Cmd
 	Running bool
 	Name    string
 	Bin     string
 	Watch   string
 	Build   string
+	Cwd     string
 	*Watcher
-	Cwd string
 }
 
 type AppConf struct {
@@ -37,26 +46,28 @@ func (app *App) Run(fail chan error) {
 		return
 	}
 	app.Running = true
-	app.Cmd.Wait() // blocks and closes the pipe on cmd exit
+	app.Cmd.Wait() // blocks and closes the io pipe on cmd exit
 }
 
-// setLogging sets the logging for the app
+// setLogging sets prefix, flags and io.Writer for the app loggers
 func (app *App) setLogging(conf *AppConf) {
 	if conf.StdoutWriter != nil {
-		app.Stdout = log.New(conf.StdoutWriter, "", 0)
+		app.Stdout.Out = log.New(conf.StdoutWriter, "", 0)
 	} else {
-		app.Stdout = log.New(os.Stdout, formatName(app.Name, color.GreenString), log.Ldate|log.Ltime)
+		app.Stdout.Out = log.New(os.Stdout, formatName(app.Name, color.GreenString), log.Ldate|log.Ltime)
 	}
 	if conf.StderrWriter != nil {
-		app.Stdout = log.New(conf.StderrWriter, "", 0)
+		app.Stderr.Out = log.New(conf.StderrWriter, "", 0)
 	} else {
-		app.Stderr = log.New(os.Stderr, formatName(app.Name, color.RedString), log.Ldate|log.Ltime)
+		app.Stderr.Out = log.New(os.Stderr, formatName(app.Name, color.RedString), log.Ldate|log.Ltime)
 	}
 }
 
 // init prepares an app to be run later
 func (app *App) Init(conf *AppConf) {
 	app.Cwd = conf.Cwd
+	app.Stdout = &LogWriter{}
+	app.Stderr = &LogWriter{}
 	app.setLogging(conf)
 	app.setCmd()
 	app.Watcher = &Watcher{}
@@ -65,7 +76,8 @@ func (app *App) Init(conf *AppConf) {
 func (app *App) setCmd() {
 	cmd, args := splitBin(app.Bin)
 	app.Cmd = execCommand(cmd, args...)
-	app.Cmd.Stdout = app
+	app.Cmd.Stdout = app.Stdout
+	app.Cmd.Stderr = app.Stderr
 	app.Cmd.Dir = app.Cwd
 }
 
@@ -79,9 +91,4 @@ func (app *App) build() ([]byte, error) {
 	Cmd := execCommand(cmd, args...)
 	Cmd.Dir = app.Cwd
 	return Cmd.CombinedOutput() // includes run
-}
-
-func (app *App) Write(p []byte) (int, error) {
-	app.Stdout.Print(string(p))
-	return len(p), nil
 }
