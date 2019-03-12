@@ -16,8 +16,8 @@ import (
 */
 
 var (
-	confPath = "/Users/pokus/golang/src/github.com/karlpokus/hans/test/conf.yaml"
-	cwd      = "/Users/pokus/golang/src/github.com/karlpokus/hans/test"
+	cwd      = "/Users/pokus/golang/src/github.com/karlpokus/hans/testdata"
+	confPath = cwd + "/conf.yaml"	
 	old      = "hello"
 	new      = "bye"
 )
