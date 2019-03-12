@@ -10,8 +10,8 @@ import (
 	"syscall"
 	"time"
 
-	"gopkg.in/yaml.v2"
 	"github.com/fatih/color"
+	"gopkg.in/yaml.v2"
 )
 
 type Opt struct {

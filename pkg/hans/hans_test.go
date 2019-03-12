@@ -1,12 +1,12 @@
 package hans
 
 import (
-	"fmt"
-	"testing"
 	"bytes"
-	"time"
+	"fmt"
 	"io/ioutil"
 	"strings"
+	"testing"
+	"time"
 )
 
 /*
@@ -17,9 +17,9 @@ import (
 
 var (
 	confPath = "/Users/pokus/golang/src/github.com/karlpokus/hans/test/conf.yaml"
-	cwd = "/Users/pokus/golang/src/github.com/karlpokus/hans/test"
-	old = "hello"
-	new = "bye"
+	cwd      = "/Users/pokus/golang/src/github.com/karlpokus/hans/test"
+	old      = "hello"
+	new      = "bye"
 )
 
 func TestHansNew(t *testing.T) {
