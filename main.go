@@ -18,5 +18,5 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	<-h.Wait()
+	h.Wait()
 }

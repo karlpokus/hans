@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"sync"
 
 	"github.com/fatih/color"
 )
@@ -20,17 +21,34 @@ func (w *LogWriter) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
+type State struct {
+	running bool
+	mu      sync.Mutex
+}
+
+func (s *State) Running() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.running
+}
+
+func (s *State) RunningState(b bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.running = b
+}
+
 type App struct {
-	Stdout  *LogWriter
-	Stderr  *LogWriter
-	Cmd     *exec.Cmd
-	Running bool
-	Name    string
-	Bin     string
-	Watch   string
-	Build   string
-	Cwd     string
+	Stdout *LogWriter
+	Stderr *LogWriter
+	Cmd    *exec.Cmd
+	Name   string
+	Bin    string
+	Watch  string
+	Build  string
+	Cwd    string
 	*Watcher
+	State
 }
 
 type AppConf struct {
@@ -45,7 +63,6 @@ func (app *App) Run(fail chan error) {
 	if err != nil {
 		return
 	}
-	app.Running = true
 	app.Cmd.Wait() // blocks and closes the io pipe on cmd exit
 }
 
@@ -82,7 +99,6 @@ func (app *App) setCmd() {
 }
 
 func (app *App) Kill() {
-	app.Running = false
 	app.Cmd.Process.Kill()
 }
 

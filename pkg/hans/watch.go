@@ -6,9 +6,9 @@ import (
 
 type Watcher struct {
 	Cmd     *exec.Cmd
-	Running bool
 	AppName string
 	Restart chan string
+	State
 }
 
 type WatcherConf struct {
@@ -19,11 +19,9 @@ type WatcherConf struct {
 func (w *Watcher) Run(fail chan error) {
 	err := w.Cmd.Start()
 	fail <- err
-	//close(fail)
 	if err != nil {
 		return
 	}
-	w.Running = true
 	w.Cmd.Wait()
 }
 
@@ -42,6 +40,5 @@ func (w Watcher) Write(p []byte) (int, error) {
 }
 
 func (w *Watcher) Kill() {
-	w.Running = false
 	w.Cmd.Process.Kill()
 }

@@ -5,22 +5,39 @@ import (
 	"fmt"
 	"io/ioutil"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
 
-/*
-	TODO:
-	test formatName
-	test splitBin
-*/
-
 var (
 	cwd      = "/Users/pokus/golang/src/github.com/karlpokus/hans/testdata"
-	confPath = cwd + "/conf.yaml"	
+	confPath = cwd + "/conf.yaml"
 	old      = "hello"
 	new      = "bye"
 )
+
+type mockWriter struct {
+	buf bytes.Buffer
+	mu  sync.Mutex
+}
+
+func (mw *mockWriter) Write(b []byte) (int, error) {
+	mw.mu.Lock()
+	defer mw.mu.Unlock()
+	mw.buf.Write(b)
+	return len(b), nil
+}
+
+func (mw *mockWriter) Read() string {
+	mw.mu.Lock()
+	defer mw.mu.Unlock()
+	return strings.TrimSpace(mw.buf.String())
+}
+
+func (mw *mockWriter) Reset() {
+	mw.buf.Reset()
+}
 
 func TestHansNew(t *testing.T) {
 	hans, err := New(confPath, true)
@@ -41,9 +58,9 @@ func TestHansStart(t *testing.T) {
 	}
 
 	// capture app io
-	var stdoutBuf bytes.Buffer
+	mw := &mockWriter{}
 	hans.Apps[0].setLogging(&AppConf{
-		StdoutWriter: &stdoutBuf,
+		StdoutWriter: mw,
 	})
 
 	// start
@@ -57,22 +74,22 @@ func TestHansStart(t *testing.T) {
 
 	// wait for app to start and check stdout
 	time.Sleep(1 * time.Second)
-	stdout := trimBuf(&stdoutBuf)
+	stdout := mw.Read()
 	if stdout != old {
 		t.Errorf("app stdout want: %s got: %s", old, stdout)
 	}
-	stdoutBuf.Reset()
+	mw.Reset()
 
 	// update file, wait for hans to build and restart app and check stdout
 	if err := replaceLineInFile(old, new); err != nil {
 		t.Errorf("replaceLineInFile failed: %v", err)
 	}
 	time.Sleep(2 * time.Second)
-	stdout = trimBuf(&stdoutBuf)
+	stdout = mw.Read()
 	if stdout != new {
 		t.Errorf("app stdout want: %s got: %s", new, stdout)
 	}
-	stdoutBuf.Reset()
+	mw.Reset()
 
 	// cleanup
 	hans.cleanup()
@@ -87,16 +104,12 @@ func TestHansStart(t *testing.T) {
 	hans.build(hans.Apps[0])
 }
 
-func trimBuf(b *bytes.Buffer) string {
-	return strings.TrimSpace(b.String())
-}
-
 func shouldBeRunning(b bool, apps []*App) error {
 	for _, app := range apps {
-		if app.Running != b {
+		if app.Running() != b {
 			return fmt.Errorf("%s running state is %v", app.Name, !b)
 		}
-		if app.Watch != "" && app.Watcher.Running != b {
+		if app.Watch != "" && app.Watcher.Running() != b {
 			return fmt.Errorf("%s watcher running state is %v", app.Name, !b)
 		}
 	}

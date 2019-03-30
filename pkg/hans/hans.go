@@ -30,38 +30,30 @@ type Hans struct {
 type Child interface {
 	Run(chan error)
 	Kill()
+	RunningState(bool)
 }
 
 // cleanup kills running apps and associated watchers
 func (hans *Hans) cleanup() {
 	for _, app := range hans.Apps {
-		if app.Running {
+		if app.Running() {
 			hans.kill(app)
 			hans.Stdout.Printf("%s killed", app.Name)
 		}
-		if app.Watcher.Running {
+		if app.Watcher.Running() {
 			hans.kill(app.Watcher)
 			hans.Stdout.Printf("%s watcher killed", app.Name)
 		}
 	}
 }
 
-// cleanupOnExit runs cleanup on hans exit
-// then writes to the done channel
-func (hans *Hans) cleanupOnExit(done chan<- bool) {
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	<-sigs
-	hans.cleanup()
-	done <- true
-}
-
-// kill kills a child
+// kill kills a child and toggles running state
 func (hans *Hans) kill(c Child) {
 	c.Kill()
+	c.RunningState(false)
 }
 
-// run runs a child
+// run runs a child and toggles running state
 func (hans *Hans) run(c Child) error {
 	fail := make(chan error)
 	go c.Run(fail)
@@ -70,6 +62,9 @@ func (hans *Hans) run(c Child) error {
 	case <-time.After(hans.TTL):
 		return fmt.Errorf("timeout")
 	case err := <-fail:
+		if err == nil {
+			c.RunningState(true)
+		}
 		return err
 	}
 }
@@ -84,11 +79,18 @@ func (hans *Hans) shouldStartRestarter() bool {
 	return false
 }
 
-// Wait prepares resource cleanup on hans exit
-func (hans *Hans) Wait() <-chan bool {
+// Wait blocks on the done chan until an os.Signal is triggered
+// runs cleanup before returning
+func (hans *Hans) Wait() {
 	done := make(chan bool, 1)
-	go hans.cleanupOnExit(done)
-	return done
+	go func() {
+		sigs := make(chan os.Signal, 1)
+		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+		<-sigs
+		done <- true
+	}()
+	<-done
+	hans.cleanup()
 }
 
 // Start starts all apps and associated watchers
@@ -97,7 +99,7 @@ func (hans *Hans) Start() error {
 		err := hans.run(app)
 		if err != nil {
 			hans.Stderr.Printf("%s did not start: %s", app.Name, err)
-			continue // don't start watcher
+			continue
 		}
 		hans.Stdout.Printf("%s started", app.Name)
 		if app.Watch != "" {
@@ -150,7 +152,7 @@ func (hans *Hans) restart(c chan string) {
 		if err != nil {
 			continue // don't restart
 		}
-		if app.Running {
+		if app.Running() { // TODO: can there be a case where it is not running and needs a restart?
 			hans.Stdout.Printf("restarting %s", app.Name)
 			app.Kill()
 			app.setCmd()
