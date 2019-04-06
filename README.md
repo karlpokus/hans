@@ -31,7 +31,7 @@ options
 
 run test
 ```bash
-$ go test -v ./pkg/hans/... -race
+$ go test -v ./pkg/hans/... -race -cover
 ```
 
 # todos

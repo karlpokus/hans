@@ -1,13 +1,12 @@
 package hans
 
 import (
-	"bytes"
 	"fmt"
 	"io/ioutil"
 	"strings"
-	"sync"
 	"testing"
-	"time"
+
+	"github.com/karlpokus/bufw"
 )
 
 var (
@@ -16,28 +15,6 @@ var (
 	old      = "hello"
 	new      = "bye"
 )
-
-type mockWriter struct {
-	buf bytes.Buffer
-	mu  sync.Mutex
-}
-
-func (mw *mockWriter) Write(b []byte) (int, error) {
-	mw.mu.Lock()
-	defer mw.mu.Unlock()
-	mw.buf.Write(b)
-	return len(b), nil
-}
-
-func (mw *mockWriter) Read() string {
-	mw.mu.Lock()
-	defer mw.mu.Unlock()
-	return strings.TrimSpace(mw.buf.String())
-}
-
-func (mw *mockWriter) Reset() {
-	mw.buf.Reset()
-}
 
 func TestHansNew(t *testing.T) {
 	hans, err := New(confPath, true)
@@ -57,10 +34,10 @@ func TestHansStart(t *testing.T) {
 		t.Error(err)
 	}
 
-	// capture app io
-	mw := &mockWriter{}
+	// prepare to capture app io
+	w := bufw.New(true)
 	hans.Apps[0].setLogging(&AppConf{
-		StdoutWriter: mw,
+		StdoutWriter: w,
 	})
 
 	// start
@@ -72,24 +49,22 @@ func TestHansStart(t *testing.T) {
 		t.Error(err)
 	}
 
-	// wait for app to start and check stdout
-	time.Sleep(1 * time.Second)
-	stdout := mw.Read()
+	// wait for app to write to stdout
+	w.Wait()
+	stdout := w.String()
 	if stdout != old {
 		t.Errorf("app stdout want: %s got: %s", old, stdout)
 	}
-	mw.Reset()
 
-	// update file, wait for hans to build and restart app and check stdout
+	// update file, wait for watcher to trigger hans to build and restart app
 	if err := replaceLineInFile(old, new); err != nil {
 		t.Errorf("replaceLineInFile failed: %v", err)
 	}
-	time.Sleep(2 * time.Second)
-	stdout = mw.Read()
+	w.Wait()
+	stdout = w.String()
 	if stdout != new {
 		t.Errorf("app stdout want: %s got: %s", new, stdout)
 	}
-	mw.Reset()
 
 	// cleanup
 	hans.cleanup()
