@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	cwd      = "/Users/pokus/golang/src/github.com/karlpokus/hans/testdata"
+	cwd      = "/Users/pokus/dev/hans/testdata"
 	confPath = cwd + "/conf.yaml"
 	old      = "hello"
 	new      = "bye"
@@ -50,7 +50,9 @@ func TestHansStart(t *testing.T) {
 	}
 
 	// wait for app to write to stdout
-	w.Wait()
+	if err := w.Wait(); err != nil {
+		t.Errorf("wait err %s", err)
+	}
 	stdout := w.String()
 	if stdout != old {
 		t.Errorf("app stdout want: %s got: %s", old, stdout)
@@ -60,7 +62,9 @@ func TestHansStart(t *testing.T) {
 	if err := replaceLineInFile(old, new); err != nil {
 		t.Errorf("replaceLineInFile failed: %v", err)
 	}
-	w.Wait()
+	if err := w.Wait(); err != nil {
+		t.Errorf("wait err %s", err)
+	}
 	stdout = w.String()
 	if stdout != new {
 		t.Errorf("app stdout want: %s got: %s", new, stdout)

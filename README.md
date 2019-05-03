@@ -7,7 +7,7 @@ A process manager can be two things 1: a development tool that restarts processe
 - apps should not spawn children of their own
 - apps should not deamonize
 - apps should log to stdout/stderr - not files
-- app src watch option requires [fswatch](https://github.com/emcrisostomo/fswatch)
+- app src watch option (and tests) require [fswatch](https://github.com/emcrisostomo/fswatch)
 
 # usage
 config
@@ -55,6 +55,7 @@ $ go test -v ./pkg/hans/... -race -cover
 - [ ] split confs on main, app, watcher
 - [ ] check `Cmd.ProcessState` if proc exits on its own
 - [ ] notification channel on app restart
+- [x] go mod
 
 # license
 MIT
