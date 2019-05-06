@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"sync"
 
 	"github.com/fatih/color"
 )
@@ -19,23 +18,6 @@ type LogWriter struct {
 func (w *LogWriter) Write(b []byte) (int, error) {
 	w.Out.Print(string(b))
 	return len(b), nil
-}
-
-type State struct {
-	running bool
-	sync.Mutex
-}
-
-func (s *State) Running() bool {
-	s.Lock()
-	defer s.Unlock()
-	return s.running
-}
-
-func (s *State) RunningState(b bool) {
-	s.Lock()
-	defer s.Unlock()
-	s.running = b
 }
 
 type App struct {
