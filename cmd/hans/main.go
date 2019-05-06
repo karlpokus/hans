@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/karlpokus/hans/pkg/hans"
+	"github.com/karlpokus/hans"
 	"flag"
 )
 
