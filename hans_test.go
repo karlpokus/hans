@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	cwd      = "/Users/pokus/dev/hans/testdata"
+	cwd      = "testdata"
 	confPath = cwd + "/conf.yaml"
 	old      = "hello"
 	new      = "bye"
@@ -50,8 +50,9 @@ func TestHansStart(t *testing.T) {
 	}
 
 	// wait for app to write to stdout
+	//time.Sleep(3 * time.Second)
 	if err := w.Wait(); err != nil {
-		t.Errorf("wait err %s", err)
+		t.Errorf("%s", err)
 	}
 	stdout := w.String()
 	if stdout != old {
@@ -59,12 +60,17 @@ func TestHansStart(t *testing.T) {
 	}
 
 	// update file, wait for watcher to trigger hans to build and restart app
-	if err := replaceLineInFile(old, new); err != nil {
+	//fail := make(chan error)
+	go replaceLineInFile(old, new, nil)
+	/*if err != nil {
 		t.Errorf("replaceLineInFile failed: %v", err)
-	}
+	}*/
+
 	if err := w.Wait(); err != nil {
-		t.Errorf("wait err %s", err)
+		t.Errorf("%s", err)
 	}
+	//time.Sleep(3 * time.Second)
+
 	stdout = w.String()
 	if stdout != new {
 		t.Errorf("app stdout want: %s got: %s", new, stdout)
@@ -77,9 +83,10 @@ func TestHansStart(t *testing.T) {
 	}
 
 	// reset test state
-	if err := replaceLineInFile(new, old); err != nil {
+	go replaceLineInFile(new, old, nil)
+	/*if err != nil {
 		t.Errorf("replaceLineInFile failed: %v", err)
-	}
+	}*/
 	hans.build(hans.Apps[0])
 }
 
@@ -95,11 +102,12 @@ func shouldBeRunning(b bool, apps []*App) error {
 	return nil
 }
 
-func replaceLineInFile(old, new string) error {
+func replaceLineInFile(old, new string, fail chan error) {
 	filepath := cwd + "/src/hello/hello.go"
 	f, err := ioutil.ReadFile(filepath)
-	if err != nil {
-		return err
+	if err != nil && fail != nil {
+		fail <- err
+		return
 	}
 	lines := strings.Split(string(f), "\n")
 	for i, line := range lines {
@@ -107,5 +115,8 @@ func replaceLineInFile(old, new string) error {
 			lines[i] = strings.Replace(line, old, new, 1)
 		}
 	}
-	return ioutil.WriteFile(filepath, []byte(strings.Join(lines, "\n")), 0644)
+	err = ioutil.WriteFile(filepath, []byte(strings.Join(lines, "\n")), 0644)
+	if err != nil && fail != nil {
+		fail <- err
+	}
 }

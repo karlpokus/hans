@@ -114,16 +114,6 @@ func (hans *Hans) Start() error {
 	return nil
 }
 
-// appFromName returns an App type from an app name
-func (hans *Hans) appFromName(appName string) *App {
-	for _, app := range hans.Apps {
-		if app.Name == appName {
-			return app
-		}
-	}
-	return &App{}
-}
-
 func (hans *Hans) build(app *App) error {
 	// TODO remove chatter
 	hans.Stdout.Printf("detected change on %s src", app.Name)
@@ -144,12 +134,11 @@ func (hans *Hans) build(app *App) error {
 
 // restart restarts an app when signaled from a watcher
 // also runs build before restarting if the build field is set in the apps config
-func (hans *Hans) restart(c chan string) {
-	for {
-		// TODO: wait for build and restart if multiple watchers share the chan
-		app := hans.appFromName(<-c)
+func (hans *Hans) restart(c chan *App) {
+	for app := range c {
 		err := hans.build(app)
 		if err != nil {
+			// TODO: report err
 			continue // don't restart
 		}
 		if app.Running() { // TODO: can there be a case where it is not running and needs a restart?
@@ -192,9 +181,9 @@ func New(path string, v bool) (*Hans, error) {
 	}
 	hans.TTL, err = time.ParseDuration(hans.Opts.TTL)
 	// init apps and watchers
-	var restart chan string
+	var restart chan *App
 	if hans.shouldStartRestarter() {
-		restart = make(chan string)
+		restart = make(chan *App)
 		go hans.restart(restart)
 	}
 	for _, app := range hans.Apps {

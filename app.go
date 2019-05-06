@@ -23,18 +23,18 @@ func (w *LogWriter) Write(b []byte) (int, error) {
 
 type State struct {
 	running bool
-	mu      sync.Mutex
+	sync.Mutex
 }
 
 func (s *State) Running() bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.Lock()
+	defer s.Unlock()
 	return s.running
 }
 
 func (s *State) RunningState(b bool) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.Lock()
+	defer s.Unlock()
 	s.running = b
 }
 

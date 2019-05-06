@@ -11,7 +11,7 @@ apps:
     bin: apps/mys.js
     watch: apps/mys.js
 opts:
-  cwd: /Users/pokus/golang/src/github.com/karlpokus/hans/example/
+  cwd: example
   ttl: 2s
 
 ...
