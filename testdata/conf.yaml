@@ -6,7 +6,7 @@ apps:
     watch: src/hello
     build: go build -o apps/hello src/hello/hello.go
 opts:
-  cwd: /Users/pokus/dev/hans/testdata
+  cwd: testdata
   ttl: 5s
 
 ...
