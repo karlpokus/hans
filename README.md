@@ -1,13 +1,10 @@
 # hans
-A process manager. A toy project.
-
 A process manager can be two things 1: a development tool that restarts processes on file change and provide a shared log stream, and 2: a production runtime daemon to manage process life cycle, scaling and resource consumption. I originally wanted both but I'll settle for 1 for now.
 
 # requirements
 - apps should not spawn children of their own
 - apps should not deamonize
 - apps should log to stdout/stderr - not files
-- app src watch option (and tests) require [fswatch](https://github.com/emcrisostomo/fswatch)
 
 # usage
 config
@@ -23,15 +20,15 @@ opts:
 ```
 start
 ```bash
-$ go run main.go
+$ go run ./cmd/hans
 ```
 options
 - `-conf` path/to/config. Defaults to config.yaml
-- `-v` verbose logging. Defaults to true
+- `-v` verbose logging. Defaults to false
 
 run test
 ```bash
-$ go test -v ./pkg/hans/... -race -cover
+$ go test -v -race -cover
 ```
 
 # todos
@@ -56,6 +53,8 @@ $ go test -v ./pkg/hans/... -race -cover
 - [ ] check `Cmd.ProcessState` if proc exits on its own
 - [ ] notification channel on app restart
 - [x] go mod
+- [x] replace fsnotify with lib
+- [ ] support globbing build cmd
 
 # license
 MIT
