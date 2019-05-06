@@ -33,13 +33,11 @@ func TestHansStart(t *testing.T) {
 	if err := shouldBeRunning(false, hans.Apps); err != nil {
 		t.Error(err)
 	}
-
 	// prepare to capture app io
 	w := bufw.New(true)
 	hans.Apps[0].setLogging(&AppConf{
 		StdoutWriter: w,
 	})
-
 	// start
 	if err := hans.Start(); err != nil {
 		t.Errorf("Hans Start failed: %v", err)
@@ -48,9 +46,6 @@ func TestHansStart(t *testing.T) {
 	if err := shouldBeRunning(true, hans.Apps); err != nil {
 		t.Error(err)
 	}
-
-	// wait for app to write to stdout
-	//time.Sleep(3 * time.Second)
 	if err := w.Wait(); err != nil {
 		t.Errorf("%s", err)
 	}
@@ -58,35 +53,22 @@ func TestHansStart(t *testing.T) {
 	if stdout != old {
 		t.Errorf("app stdout want: %s got: %s", old, stdout)
 	}
-
 	// update file, wait for watcher to trigger hans to build and restart app
-	//fail := make(chan error)
-	go replaceLineInFile(old, new, nil)
-	/*if err != nil {
-		t.Errorf("replaceLineInFile failed: %v", err)
-	}*/
-
+	go replaceLineInFile(old, new)
 	if err := w.Wait(); err != nil {
 		t.Errorf("%s", err)
 	}
-	//time.Sleep(3 * time.Second)
-
 	stdout = w.String()
 	if stdout != new {
 		t.Errorf("app stdout want: %s got: %s", new, stdout)
 	}
-
 	// cleanup
 	hans.cleanup()
 	if err := shouldBeRunning(false, hans.Apps); err != nil {
 		t.Error(err)
 	}
-
 	// reset test state
-	go replaceLineInFile(new, old, nil)
-	/*if err != nil {
-		t.Errorf("replaceLineInFile failed: %v", err)
-	}*/
+	go replaceLineInFile(new, old)
 	hans.build(hans.Apps[0])
 }
 
@@ -102,21 +84,14 @@ func shouldBeRunning(b bool, apps []*App) error {
 	return nil
 }
 
-func replaceLineInFile(old, new string, fail chan error) {
+func replaceLineInFile(old, new string) {
 	filepath := cwd + "/src/hello/hello.go"
-	f, err := ioutil.ReadFile(filepath)
-	if err != nil && fail != nil {
-		fail <- err
-		return
-	}
+	f, _ := ioutil.ReadFile(filepath)
 	lines := strings.Split(string(f), "\n")
 	for i, line := range lines {
 		if strings.Contains(line, old) {
 			lines[i] = strings.Replace(line, old, new, 1)
 		}
 	}
-	err = ioutil.WriteFile(filepath, []byte(strings.Join(lines, "\n")), 0644)
-	if err != nil && fail != nil {
-		fail <- err
-	}
+	ioutil.WriteFile(filepath, []byte(strings.Join(lines, "\n")), 0644)
 }
