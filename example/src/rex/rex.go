@@ -6,7 +6,6 @@ import (
 	"os"
 	"encoding/json"
 	"time"
-	"log"
 	"math/rand"
 	"strconv"
 )
@@ -31,24 +30,20 @@ func request(url string) (User, error) {
 		return user, err
 	}
 	defer resp.Body.Close()
-	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
-		return user, err
-	}
-	return user, nil
+	err = json.NewDecoder(resp.Body).Decode(&user)
+	return user, err
 }
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
-	stdout := log.New(os.Stdout, "", 0)
-	stderr := log.New(os.Stderr, "", 0)
 	url := "https://jsonplaceholder.typicode.com/users"
 	for {
 		user, err := request(url)
 		if err != nil {
-			stderr.Println(err)
-		} else {
-			stdout.Println(user.Id, user.Name)
+			os.Stderr.WriteString(err.Error())
+			continue
 		}
+		os.Stdout.WriteString(user.Name)
 		time.Sleep(8 * time.Second)
 	}
 }
