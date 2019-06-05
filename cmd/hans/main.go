@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"flag"
 
-	"github.com/karlpokus/hans"
+	"hans"
 )
 
 var (

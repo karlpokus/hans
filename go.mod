@@ -1,4 +1,4 @@
-module github.com/karlpokus/hans
+module hans
 
 go 1.12
 
