@@ -23,7 +23,7 @@ start
 $ go run ./cmd/hans
 ```
 options
-- `-conf` path/to/config. Defaults to config.yaml
+- `-conf` path/to/config. Defaults to conf.yaml
 - `-v` verbose logging. Defaults to false
 
 run test
@@ -55,6 +55,9 @@ $ go test -v -race -cover
 - [x] go mod
 - [x] replace fsnotify with lib
 - [ ] support globbing build cmd
+- [x] restart child on bad exit
+- [x] maxBadExits
+- [ ] build example per env
 
 # license
 MIT

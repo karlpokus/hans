@@ -11,15 +11,15 @@ import (
 
 type Watcher struct {
 	*App
-	Restart chan *App
+	Build   chan *App
 	RootDir string
 	State
 	*fsnotify.Watcher
 }
 
 type WatcherConf struct {
-	Restart chan *App
 	*App
+	Build chan *App
 }
 
 // Watch starts watching files and dirs recursively
@@ -71,12 +71,12 @@ func (w *Watcher) Run(fail chan error) {
 	}
 	// TODO: handle w.Watcher.Errors
 	for _ = range debounce(w.Watcher.Events) {
-		w.Restart <- w.App
+		w.Build <- w.App
 	}
 }
 
 func (w *Watcher) Init(conf *WatcherConf) {
-	w.Restart = conf.Restart
+	w.Build = conf.Build
 	w.App = conf.App
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {

@@ -69,7 +69,11 @@ func TestHansStart(t *testing.T) {
 	}
 	// reset test state
 	go replaceLineInFile(new, old)
-	hans.build(hans.Apps[0])
+	restart := make(chan *App)
+	build := make(chan *App)
+	go hans.build(build, restart)
+	build <- hans.Apps[0]
+	<-restart
 }
 
 func shouldBeRunning(b bool, apps []*App) error {

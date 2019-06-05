@@ -69,16 +69,6 @@ func (hans *Hans) run(c Child) error {
 	}
 }
 
-// shouldStartRestarter determines if we should run hans.restart
-func (hans *Hans) shouldStartRestarter() bool {
-	for _, app := range hans.Apps {
-		if app.Watch != "" {
-			return true
-		}
-	}
-	return false
-}
-
 // Wait blocks on the done chan until an os.Signal is triggered
 // runs cleanup before returning
 func (hans *Hans) Wait() {
@@ -114,43 +104,43 @@ func (hans *Hans) Start() error {
 	return nil
 }
 
-func (hans *Hans) build(app *App) error {
-	// TODO remove chatter
-	hans.Stdout.Printf("detected change on %s src", app.Name)
-	hans.Stdout.Printf("attempting %s restart", app.Name)
-	if app.Build != "" {
-		hans.Stdout.Printf("rebuilding %s first", app.Name)
+// build builds an app and sends it off for restarting if successful
+func (hans *Hans) build(buildChan, restartChan chan *App) {
+	for app := range buildChan {
+		hans.Stdout.Printf("%s src change detected, attempting build and restart", app.Name)
+		if app.Build == "" {
+			hans.Stderr.Printf("%s is missing a build cmd, build and restart aborted", app.Name)
+			continue
+		}
 		res, err := app.build()
 		if err != nil {
-			hans.Stderr.Printf("%s build err: %v", app.Name, err)
+			hans.Stderr.Printf("%s build failed: %v", app.Name, err)
 			hans.Stderr.Printf("%s", res)
-			hans.Stderr.Printf("%s restart aborted", app.Name)
-			return err
+			hans.Stderr.Println("restart aborted")
+			continue
 		}
-		hans.Stdout.Printf("%s build succesful", app.Name)
+		hans.Stdout.Printf("%s build successful", app.Name)
+		restartChan <- app
 	}
-	return nil
 }
 
-// restart restarts an app when signaled from a watcher
-// also runs build before restarting if the build field is set in the apps config
+// restart restarts an app
 func (hans *Hans) restart(c chan *App) {
 	for app := range c {
-		err := hans.build(app)
+		if app.BadExit.Ko {
+			hans.Stderr.Printf("maxBadExits reached for %s. No more restarts", app.Name)
+			continue
+		}
+		hans.Stdout.Printf("restarting %s", app.Name)
+		if app.Running() { // app is still running on src change
+			hans.kill(app)
+		}
+		app.setCmd()
+		err := hans.run(app)
 		if err != nil {
-			// TODO: report err
-			continue // don't restart
+			hans.Stderr.Printf("%s did not restart: %s", app.Name, err)
 		}
-		if app.Running() { // TODO: can there be a case where it is not running and needs a restart?
-			hans.Stdout.Printf("restarting %s", app.Name)
-			app.Kill()
-			app.setCmd()
-			err := hans.run(app)
-			if err != nil {
-				hans.Stderr.Printf("%s did not restart: %s", app.Name, err)
-			}
-			hans.Stdout.Printf("%s restarted", app.Name)
-		}
+		hans.Stdout.Printf("%s restarted", app.Name)
 	}
 }
 
@@ -180,24 +170,28 @@ func New(path string, v bool) (*Hans, error) {
 		hans.Opts.TTL = "1s"
 	}
 	hans.TTL, err = time.ParseDuration(hans.Opts.TTL)
-	// init apps and watchers
-	var restart chan *App
-	if hans.shouldStartRestarter() {
-		restart = make(chan *App)
-		go hans.restart(restart)
+	if err != nil {
+		return hans, err
 	}
+	// run services
+	restart := make(chan *App)
+	build := make(chan *App)
+	go hans.restart(restart)
+	go hans.build(build, restart)
+	// init apps and watchers
 	for _, app := range hans.Apps {
 		app.Init(&AppConf{
-			Cwd: hans.Opts.Cwd,
+			Restart: restart,
+			Cwd:     hans.Opts.Cwd,
 		})
 		if app.Watch != "" {
 			app.Watcher.Init(&WatcherConf{
-				Restart: restart,
-				App:     app,
+				Build: build,
+				App:   app,
 			})
 		}
 	}
-	return hans, err
+	return hans, nil
 }
 
 // conf reads a config file and populates the Hans type
