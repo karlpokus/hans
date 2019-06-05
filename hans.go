@@ -14,6 +14,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+var Version = "vX.Y.Z" // injected at build time
+
 type Opt struct {
 	Cwd string
 	TTL string

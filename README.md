@@ -57,7 +57,7 @@ $ go test -v -race -cover
 - [ ] support globbing build cmd
 - [x] restart child on bad exit
 - [x] maxBadExits
-- [ ] build example per env
+- [x] version flag
 
 # license
 MIT
