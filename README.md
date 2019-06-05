@@ -1,12 +1,15 @@
 # hans
+
 A process manager can be two things 1: a development tool that restarts processes on file change and provide a shared log stream, and 2: a production runtime daemon to manage process life cycle, scaling and resource consumption. I originally wanted both but I'll settle for 1 for now.
 
 # requirements
+
 - apps should not spawn children of their own
 - apps should not deamonize
 - apps should log to stdout/stderr - not files
 
 # usage
+
 config
 ```yaml
 apps:
@@ -18,18 +21,32 @@ opts:
   cwd: global base path for relative app paths # optional
   ttl: global timeout for app and watcher startups # optional, defaults to 1s
 ```
+
 start
 ```bash
 $ go run ./cmd/hans <flags>
 ```
+
 flags
 - `-conf` path/to/config. Defaults to conf.yaml
 - `-v` verbose logging. Defaults to false
 - `-version` print version and exit
 
-run test
+# test
+
 ```bash
 $ go test -v -race -cover
+```
+
+# build
+
+```bash
+# creates a new version of the hans cmd by
+# updating the version file,
+# building amd64 binaries for linux and darwin,
+# adds-, and pushes new commit,
+# adds-, and pushes new git tag
+$ ./release.sh vX.Y.Z
 ```
 
 # todos
