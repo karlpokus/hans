@@ -21,22 +21,25 @@ func (w *LogWriter) Write(b []byte) (int, error) {
 }
 
 type App struct {
-	Stdout *LogWriter
-	Stderr *LogWriter
-	Cmd    *exec.Cmd
-	Name   string
-	Bin    string
-	Watch  string
-	Build  string
-	Cwd    string
+	Stdout  *LogWriter
+	Stderr  *LogWriter
+	Cmd     *exec.Cmd
+	Name    string
+	Bin     string
+	Watch   string
+	Build   string
+	Cwd     string
+	Restart chan *App
 	*Watcher
 	State
+	BadExit
 }
 
 type AppConf struct {
 	StdoutWriter io.Writer
 	StderrWriter io.Writer
 	Cwd          string
+	Restart      chan *App
 }
 
 func (app *App) Run(fail chan error) {
@@ -45,7 +48,20 @@ func (app *App) Run(fail chan error) {
 	if err != nil {
 		return
 	}
-	app.Cmd.Wait() // blocks and closes the io pipe on cmd exit
+	err = app.Cmd.Wait()
+	app.RunningState(false)
+	if err != nil {
+		app.BadExit.Init()
+		app.BadExit.Inc()
+		if app.BadExit.MaxReached() {
+			if app.BadExit.WithinWindow() {
+				app.BadExit.Ko = true
+			}
+			app.BadExit.Reset()
+		}
+		app.Restart <- app // only restart on non-nil err
+		return
+	}
 }
 
 // setLogging sets prefix, flags and io.Writer for the app loggers
@@ -65,6 +81,7 @@ func (app *App) setLogging(conf *AppConf) {
 // init prepares an app to be run later
 func (app *App) Init(conf *AppConf) {
 	app.Cwd = conf.Cwd
+	app.Restart = conf.Restart
 	app.Stdout = &LogWriter{}
 	app.Stderr = &LogWriter{}
 	app.setLogging(conf)

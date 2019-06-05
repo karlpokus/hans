@@ -1,5 +1,5 @@
 #!/bin/bash
 
 echo "speaking"
-sleep 10
+sleep 2
 exit 2
