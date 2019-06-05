@@ -20,11 +20,12 @@ opts:
 ```
 start
 ```bash
-$ go run ./cmd/hans
+$ go run ./cmd/hans <flags>
 ```
-options
+flags
 - `-conf` path/to/config. Defaults to conf.yaml
 - `-v` verbose logging. Defaults to false
+- `-version` print version and exit
 
 run test
 ```bash
