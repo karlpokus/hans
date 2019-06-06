@@ -3,14 +3,14 @@ package hans
 import "time"
 
 var (
-  maxBadExits = 5
+	maxBadExits       = 5
 	maxBadExitsWindow = "15s"
 )
 
 type BadExit struct {
-	N int
+	N    int
 	Mark time.Time
-	Ko bool
+	Ko   bool
 }
 
 func (b *BadExit) Init() {
