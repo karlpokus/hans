@@ -78,6 +78,7 @@ $ ./release.sh vX.Y.Z
 - [x] maxBadExits
 - [x] version flag
 - [x] local cwd
+- [ ] log on clean exit and maybe stop hans if that's the only app
 
 # license
 MIT
