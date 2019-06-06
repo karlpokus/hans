@@ -28,6 +28,7 @@ type App struct {
 	Bin     string
 	Watch   string
 	Build   string
+	Env     []string
 	Cwd     string
 	Restart chan *App
 	*Watcher
@@ -95,6 +96,7 @@ func (app *App) setCmd() {
 	app.Cmd.Stdout = app.Stdout
 	app.Cmd.Stderr = app.Stderr
 	app.Cmd.Dir = app.Cwd
+	app.Cmd.Env = app.Env
 }
 
 func (app *App) Kill() {

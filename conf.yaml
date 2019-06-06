@@ -8,8 +8,10 @@ apps:
   - name: rex
     bin: apps/rex
   - name: mys
-    bin: apps/mys.js
+    bin: node apps/mys.js
     watch: apps/mys.js
+    env:
+      - SECRET_MSG=mys is a tiny kitty
   - name: bad
     bin: apps/bad.sh
 opts:

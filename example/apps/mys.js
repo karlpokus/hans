@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
-const name = 'mys'
-const delay = 12000;
+const delay = 5000;
+const secret = process.env.SECRET_MSG || "unknown";
 const loop = () => {
-	console.log(`I am ${ name } and I log every ${ delay } msecs`);
+	console.log(`The secret is ${ secret }`);
 }
 
 setInterval(loop, delay)

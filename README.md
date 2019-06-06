@@ -13,10 +13,11 @@ A process manager can be two things 1: a development tool that restarts processe
 config
 ```yaml
 apps:
-- name: the name of the app # required
-  bin: path to bin and space separated args to run # required
-  watch: path to a src dir or file to watch for changes. Will trigger a restart of bin # optional
-  build: absolute path to build command to run on src changes before restart # optional
+  - name: the name of the app # required
+    bin: path to binary and space separated args to run # required
+    watch: path to a src dir or file to watch for changes. Will trigger a restart of bin # optional
+    build: absolute path to build command to run on src changes before restart # optional
+    env: array of key=value pairs for the app environment # optional
 opts:
   cwd: global base path for relative app paths # optional
   ttl: global timeout for app and watcher startups # optional, defaults to 1s
@@ -63,11 +64,10 @@ $ ./release.sh vX.Y.Z
 - [x] relative paths in config
 - [ ] os independent paths
 - [x] write tests and remove app dependency on hans
-- [ ] pass Env flags to children via `Cmd.Env`
+- [x] pass Env flags to children via `Cmd.Env`
 - [ ] log levels
 - [x] `Cmd.Dir` for global pwd
 - [x] use conf structs
-- [ ] split confs on main, app, watcher
 - [ ] check `Cmd.ProcessState` if proc exits on its own
 - [ ] notification channel on app restart
 - [x] go mod
