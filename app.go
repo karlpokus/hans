@@ -81,7 +81,9 @@ func (app *App) setLogging(conf *AppConf) {
 
 // init prepares an app to be run later
 func (app *App) Init(conf *AppConf) {
-	app.Cwd = conf.Cwd
+	if conf.Cwd != "" && app.Cwd == "" { // local cwd overrides global
+		app.Cwd = conf.Cwd
+	}
 	app.Restart = conf.Restart
 	app.Stdout = &LogWriter{}
 	app.Stderr = &LogWriter{}

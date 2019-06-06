@@ -18,6 +18,7 @@ apps:
     watch: path to a src dir or file to watch for changes. Will trigger a restart of bin # optional
     build: absolute path to build command to run on src changes before restart # optional
     env: array of key=value pairs for the app environment # optional
+    cwd: local base path for relative app paths. Overrides the global one # optional
 opts:
   cwd: global base path for relative app paths # optional
   ttl: global timeout for app and watcher startups # optional, defaults to 1s
@@ -76,6 +77,7 @@ $ ./release.sh vX.Y.Z
 - [x] restart child on bad exit
 - [x] maxBadExits
 - [x] version flag
+- [x] local cwd
 
 # license
 MIT
