@@ -141,6 +141,7 @@ func (hans *Hans) restart(c chan *App) {
 		err := hans.run(app)
 		if err != nil {
 			hans.Stderr.Printf("%s did not restart: %s", app.Name, err)
+			continue
 		}
 		hans.Stdout.Printf("%s restarted", app.Name)
 	}
