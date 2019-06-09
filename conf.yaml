@@ -8,12 +8,16 @@ apps:
   - name: rex
     bin: apps/rex
   - name: mys
-    bin: node apps/mys.js
+    bin: node apps/mys.js # must use explicit interpreter if env is set
     watch: apps/mys.js
     env:
       - SECRET_MSG=mys is a tiny kitty
   - name: bad
     bin: apps/bad.sh
+  - name: good
+    bin: apps/good.sh
+  - name: looptrap
+    bin: apps/looptrap.sh
 opts:
   cwd: example
   ttl: 2s
