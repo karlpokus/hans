@@ -10,7 +10,7 @@ var (
 type BadExit struct {
 	N    int
 	Mark time.Time
-	Ko   bool
+	//Ko   bool
 }
 
 func (b *BadExit) Init() {
@@ -24,7 +24,7 @@ func (b *BadExit) Inc() {
 }
 
 func (b *BadExit) MaxReached() bool {
-	return b.N > maxBadExits
+	return b.N == maxBadExits
 }
 
 func (b *BadExit) WithinWindow() bool {

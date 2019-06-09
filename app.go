@@ -21,16 +21,16 @@ func (w *LogWriter) Write(b []byte) (int, error) {
 }
 
 type App struct {
-	Stdout  *LogWriter
-	Stderr  *LogWriter
-	Cmd     *exec.Cmd
-	Name    string
-	Bin     string
-	Watch   string
-	Build   string
-	Env     []string
-	Cwd     string
-	Restart chan *App
+	Stdout *LogWriter
+	Stderr *LogWriter
+	Cmd    *exec.Cmd
+	Name   string
+	Bin    string
+	Watch  string
+	Build  string
+	Env    []string
+	Cwd    string
+	Manc   chan *App
 	*Watcher
 	State
 	BadExit
@@ -40,7 +40,7 @@ type AppConf struct {
 	StdoutWriter io.Writer
 	StderrWriter io.Writer
 	Cwd          string
-	Restart      chan *App
+	Manc         chan *App
 }
 
 func (app *App) Run(fail chan error) {
@@ -49,20 +49,9 @@ func (app *App) Run(fail chan error) {
 	if err != nil {
 		return
 	}
-	err = app.Cmd.Wait()
+	app.Cmd.Wait()
 	app.RunningState(false)
-	if err != nil {
-		app.BadExit.Init()
-		app.BadExit.Inc()
-		if app.BadExit.MaxReached() {
-			if app.BadExit.WithinWindow() {
-				app.BadExit.Ko = true
-			}
-			app.BadExit.Reset()
-		}
-		app.Restart <- app // only restart on non-nil err
-		return
-	}
+	app.Manc <- app
 }
 
 // setLogging sets prefix, flags and io.Writer for the app loggers
@@ -84,15 +73,15 @@ func (app *App) Init(conf *AppConf) {
 	if conf.Cwd != "" && app.Cwd == "" { // local cwd overrides global
 		app.Cwd = conf.Cwd
 	}
-	app.Restart = conf.Restart
+	app.Manc = conf.Manc
 	app.Stdout = &LogWriter{}
 	app.Stderr = &LogWriter{}
 	app.setLogging(conf)
-	app.setCmd()
+	app.SetCmd()
 	app.Watcher = &Watcher{}
 }
 
-func (app *App) setCmd() {
+func (app *App) SetCmd() {
 	cmd, args := splitBin(app.Bin)
 	app.Cmd = execCommand(cmd, args...)
 	app.Cmd.Stdout = app.Stdout
@@ -102,7 +91,8 @@ func (app *App) setCmd() {
 }
 
 func (app *App) Kill() {
-	app.Cmd.Process.Kill()
+	//app.Cmd.Process.Kill()
+	app.Cmd.Process.Signal(os.Kill)
 }
 
 func (app *App) build() ([]byte, error) {
@@ -110,4 +100,8 @@ func (app *App) build() ([]byte, error) {
 	Cmd := execCommand(cmd, args...)
 	Cmd.Dir = app.Cwd
 	return Cmd.CombinedOutput() // includes run
+}
+
+func (app *App) GetName() string {
+	return app.Name
 }

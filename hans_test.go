@@ -43,18 +43,18 @@ func TestHansStart(t *testing.T) {
 		t.Errorf("Hans Start failed: %v", err)
 		t.FailNow()
 	}
-	if err := shouldBeRunning(true, hans.Apps); err != nil {
-		t.Error(err)
-	}
 	if err := w.Wait(); err != nil {
 		t.Errorf("%s", err)
+	}
+	if err := shouldBeRunning(true, hans.Apps); err != nil {
+		t.Error(err)
 	}
 	stdout := w.String()
 	if stdout != old {
 		t.Errorf("app stdout want: %s got: %s", old, stdout)
 	}
 	// update file, wait for watcher to trigger hans to build and restart app
-	go replaceLineInFile(old, new)
+	go updateSrc(old, new)
 	if err := w.Wait(); err != nil {
 		t.Errorf("%s", err)
 	}
@@ -62,18 +62,13 @@ func TestHansStart(t *testing.T) {
 	if stdout != new {
 		t.Errorf("app stdout want: %s got: %s", new, stdout)
 	}
-	// cleanup
+	// reset test state and cleanup
+	updateSrc(new, old)
+	hans.Apps[0].build()
 	hans.cleanup()
 	if err := shouldBeRunning(false, hans.Apps); err != nil {
 		t.Error(err)
 	}
-	// reset test state
-	go replaceLineInFile(new, old)
-	restart := make(chan *App)
-	build := make(chan *App)
-	go hans.build(build, restart)
-	build <- hans.Apps[0]
-	<-restart
 }
 
 func shouldBeRunning(b bool, apps []*App) error {
@@ -88,7 +83,7 @@ func shouldBeRunning(b bool, apps []*App) error {
 	return nil
 }
 
-func replaceLineInFile(old, new string) {
+func updateSrc(old, new string) {
 	filepath := cwd + "/src/hello/hello.go"
 	f, _ := ioutil.ReadFile(filepath)
 	lines := strings.Split(string(f), "\n")

@@ -27,26 +27,55 @@ type Hans struct {
 	Apps   []*App
 	Opts   Opt
 	TTL    time.Duration
+	Runc   chan Child
 }
 
 type Child interface {
 	Run(chan error)
 	Kill()
 	RunningState(bool)
+	GetName() string
 }
 
-// cleanup kills running apps and associated watchers
+func (hans Hans) interrupt() bool {
+	anyRunning := func() (*App, bool) {
+		for _, app := range hans.Apps {
+			if app.Running() {
+				return app, true
+			}
+		}
+		return nil, false
+	}
+	app, ok := anyRunning()
+	if ok {
+		app.Cmd.Process.Signal(os.Interrupt)
+	}
+	return ok
+}
+
+// cleanup terminates running apps and associated watchers by first sending SIGINT to pgid,
+// to allow for graceful exits, then SIGKILL to any still running apps after a short timeout.
+// Logs will show `terminated` for apps that respond to SIGINT and `killed` for
+// those that don't
 func (hans *Hans) cleanup() {
+	mod := "[CLEANUP]"
+	hans.Stdout.Printf("%s start", mod)
+	ok := hans.interrupt() // SIGINT is trappable.
+	if ok {
+		hans.Stdout.Printf("%s pgid recieved SIGINT", mod)
+		time.Sleep(2 * time.Second)
+	}
 	for _, app := range hans.Apps {
 		if app.Running() {
-			hans.kill(app)
-			hans.Stdout.Printf("%s killed", app.Name)
+			hans.kill(app) // SIGKILL is not trappable
+			hans.Stdout.Printf("%s %s killed", mod, app.Name)
 		}
 		if app.Watcher.Running() {
 			hans.kill(app.Watcher)
-			hans.Stdout.Printf("%s watcher killed", app.Name)
+			hans.Stdout.Printf("%s %s watcher terminated", mod, app.Name)
 		}
 	}
+	hans.Stdout.Printf("%s done", mod)
 }
 
 // kill kills a child and toggles running state
@@ -56,18 +85,51 @@ func (hans *Hans) kill(c Child) {
 }
 
 // run runs a child and toggles running state
-func (hans *Hans) run(c Child) error {
-	fail := make(chan error)
-	go c.Run(fail)
+func (hans *Hans) run() {
+	mod := "[RUN]"
+	for c := range hans.Runc {
+		fail := make(chan error)
+		go c.Run(fail)
 
-	select {
-	case <-time.After(hans.TTL):
-		return fmt.Errorf("timeout")
-	case err := <-fail:
-		if err == nil {
+		select {
+		case <-time.After(hans.TTL):
+			hans.Stderr.Printf("%s %s timeout", mod, c.GetName())
+		case err := <-fail:
+			if err != nil {
+				hans.Stderr.Printf("%s %s failed start attempt: %v", mod, c.GetName(), err)
+				break
+			}
 			c.RunningState(true)
+			hans.Stdout.Printf("%s %s started", mod, c.GetName())
 		}
-		return err
+	}
+}
+
+func (hans *Hans) manager(manc chan *App, runc chan Child) {
+	mod := "[MANAGER]"
+	for app := range manc {
+		code := app.Cmd.ProcessState.ExitCode()
+		switch {
+		case code == -1:
+			hans.Stdout.Printf("%s %s terminated", mod, app.Name)
+		case code == 0:
+			hans.Stdout.Printf("%s %s exited", mod, app.Name)
+		case code > 0:
+			hans.Stderr.Printf("%s %s exited %d", mod, app.Name, code)
+			// bad exit dance
+			app.BadExit.Init()
+			app.BadExit.Inc()
+			if app.BadExit.MaxReached() {
+				if app.BadExit.WithinWindow() {
+					hans.Stderr.Printf("%s maxBadExits reached. %s is dead", mod, app.Name)
+					break
+				}
+				app.BadExit.Reset()
+			}
+			hans.Stdout.Printf("%s restarting %s", mod, app.Name)
+			app.SetCmd()
+			runc <- app
+		}
 	}
 }
 
@@ -88,62 +150,35 @@ func (hans *Hans) Wait() {
 // Start starts all apps and associated watchers
 func (hans *Hans) Start() error {
 	for _, app := range hans.Apps {
-		err := hans.run(app)
-		if err != nil {
-			hans.Stderr.Printf("%s did not start: %s", app.Name, err)
-			continue
-		}
-		hans.Stdout.Printf("%s started", app.Name)
+		hans.Runc <- app
 		if app.Watch != "" {
-			err := hans.run(app.Watcher)
-			if err != nil {
-				hans.Stderr.Printf("%s watcher did not start: %s", app.Name, err)
-				continue
-			}
-			hans.Stdout.Printf("%s watcher started", app.Name)
+			hans.Runc <- app.Watcher
 		}
 	}
 	return nil
 }
 
 // build builds an app and sends it off for restarting if successful
-func (hans *Hans) build(buildChan, restartChan chan *App) {
-	for app := range buildChan {
-		hans.Stdout.Printf("%s src change detected, attempting build and restart", app.Name)
+func (hans *Hans) build(buildc chan *App, runc chan Child) {
+	mod := "[BUILD]"
+	for app := range buildc {
+		hans.Stdout.Printf("%s %s src change detected. Attempting build and restart", mod, app.Name)
 		if app.Build == "" {
-			hans.Stderr.Printf("%s is missing a build cmd, build and restart aborted", app.Name)
+			hans.Stderr.Printf("%s %s build cmd missing. Build aborted. Attempting restart", mod, app.Name)
+			runc <- app
 			continue
 		}
 		res, err := app.build()
 		if err != nil {
-			hans.Stderr.Printf("%s build failed: %v", app.Name, err)
-			hans.Stderr.Printf("%s", res)
-			hans.Stderr.Println("restart aborted")
+			hans.Stderr.Printf("%s %s build failed: %v", mod, app.Name, err)
+			hans.Stderr.Printf("%s %s", mod, res)
+			hans.Stderr.Printf("%s restart aborted", mod)
 			continue
 		}
-		hans.Stdout.Printf("%s build successful", app.Name)
-		restartChan <- app
-	}
-}
-
-// restart restarts an app
-func (hans *Hans) restart(c chan *App) {
-	for app := range c {
-		if app.BadExit.Ko {
-			hans.Stderr.Printf("maxBadExits reached for %s. No more restarts", app.Name)
-			continue
-		}
-		hans.Stdout.Printf("restarting %s", app.Name)
-		if app.Running() { // app is still running on src change
-			hans.kill(app)
-		}
-		app.setCmd()
-		err := hans.run(app)
-		if err != nil {
-			hans.Stderr.Printf("%s did not restart: %s", app.Name, err)
-			continue
-		}
-		hans.Stdout.Printf("%s restarted", app.Name)
+		hans.Stdout.Printf("%s %s build successful", mod, app.Name)
+		hans.kill(app) // app is running during build
+		app.SetCmd()
+		runc <- app
 	}
 }
 
@@ -177,20 +212,23 @@ func New(path string, v bool) (*Hans, error) {
 		return hans, err
 	}
 	// run services
-	restart := make(chan *App)
-	build := make(chan *App)
-	go hans.restart(restart)
-	go hans.build(build, restart)
+	runc := make(chan Child)
+	hans.Runc = runc
+	go hans.run()
+	manc := make(chan *App)
+	go hans.manager(manc, runc)
+	buildc := make(chan *App)
+	go hans.build(buildc, runc)
 	// init apps and watchers
 	for _, app := range hans.Apps {
 		app.Init(&AppConf{
-			Restart: restart,
-			Cwd:     hans.Opts.Cwd,
+			Manc: manc,
+			Cwd:  hans.Opts.Cwd,
 		})
 		if app.Watch != "" {
 			app.Watcher.Init(&WatcherConf{
-				Build: build,
-				App:   app,
+				Buildc: buildc,
+				App:    app,
 			})
 		}
 	}
@@ -214,7 +252,7 @@ func readConf(hans *Hans, path string) error {
 func formatName(name string, colorfn func(string, ...interface{}) string) string {
 	const maxChars int = 9
 	if len(name) >= maxChars {
-		return name[:9] + " "
+		return colorfn(name[:9] + " ")
 	}
 	return colorfn(fmt.Sprintf("%-10v", name))
 }

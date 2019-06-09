@@ -52,6 +52,7 @@ $ ./release.sh vX.Y.Z
 ```
 
 # todos
+
 - [x] mvp
 - [x] hansd - won't do
 - [x] hansctl - won't do
@@ -78,7 +79,14 @@ $ ./release.sh vX.Y.Z
 - [x] maxBadExits
 - [x] version flag
 - [x] local cwd
-- [ ] log on clean exit and maybe stop hans if that's the only app
+- [ ] maybe stop hans when last app exited
+- [x] allow graceful exits
+- [x] log any exit
+- [x] log by module
+
+# known bugs
+- passing the env opt requires an explicit interpreter (like node) regardless of she-bang
+- `Process.Signal(os.Kill)` will not allow for capturing anything after `Cmd.Wait()`
 
 # license
 MIT
