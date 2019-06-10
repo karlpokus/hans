@@ -63,9 +63,9 @@ func TestHansStart(t *testing.T) {
 		t.Errorf("app stdout want: %s got: %s", new, stdout)
 	}
 	// reset test state and cleanup
+	hans.cleanup()
 	updateSrc(new, old)
 	hans.Apps[0].build()
-	hans.cleanup()
 	if err := shouldBeRunning(false, hans.Apps); err != nil {
 		t.Error(err)
 	}
