@@ -19,7 +19,7 @@ if test -z $VERSION; then
 fi
 
 feedback "running tests"
-go test
+go test -race
 TEST_RESULT=`echo $?`
 if test $TEST_RESULT -ne 0; then
   feedback "tests failed. Exiting"
