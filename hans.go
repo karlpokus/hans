@@ -165,14 +165,16 @@ func (hans *Hans) build(buildc chan *App, runc chan Child) {
 		hans.Stdout.Printf("%s %s src change detected. Attempting build and restart", mod, app.Name)
 		if app.Build == "" {
 			hans.Stderr.Printf("%s %s build cmd missing. Build aborted. Attempting restart", mod, app.Name)
+			hans.kill(app) // app is running during build
+			app.SetCmd()
 			runc <- app
 			continue
 		}
-		res, err := app.build()
+		res, err := app.build() // TODO: let app.build check Build string
 		if err != nil {
 			hans.Stderr.Printf("%s %s build failed: %v", mod, app.Name, err)
 			hans.Stderr.Printf("%s %s", mod, res)
-			hans.Stderr.Printf("%s restart aborted", mod)
+			hans.Stderr.Printf("%s restart attempt aborted", mod)
 			continue
 		}
 		hans.Stdout.Printf("%s %s build successful. Attempting restart", mod, app.Name)
