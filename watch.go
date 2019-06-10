@@ -38,7 +38,7 @@ func (w *Watcher) Watch() error {
 		return nil
 	}
 	walk := func(path string, fi os.FileInfo, err error) error {
-		if strings.HasPrefix(path, w.ExcludePath) {
+		if w.ExcludePath != "" && strings.HasPrefix(path, w.ExcludePath) {
 			return nil
 		}
 		if fi.IsDir() {
@@ -89,7 +89,9 @@ func (w *Watcher) Init(conf *WatcherConf) {
 	}
 	w.Watcher = watcher
 	w.RootDir = path.Join(conf.App.Cwd, conf.App.Watch)
-	w.ExcludePath = path.Join(w.RootDir, conf.App.Watch_exclude)
+	if conf.App.Watch_exclude != "" {
+		w.ExcludePath = path.Join(w.RootDir, conf.App.Watch_exclude)
+	}
 }
 
 func (w *Watcher) Kill() {
