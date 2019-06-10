@@ -16,7 +16,7 @@ func main() {
 	interval, _ := strconv.Atoi(os.Args[1])
 	for {
 		fmt.Fprintf(os.Stdout, "reporting every %d secs", interval)
-		fmt.Fprintf(os.Stderr, "reporting the error")
+		fmt.Fprintf(os.Stderr, "reporting some errs")
 		time.Sleep(time.Duration(interval) * time.Second)
 	}
 }

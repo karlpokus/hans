@@ -15,8 +15,9 @@ config
 apps:
   - name: the name of the app # required
     bin: path to binary and space separated args to run # required
-    watch: path to a src dir or file to watch for changes. Will trigger a restart of bin # optional
-    build: absolute path to build command to run on src changes before restart # optional
+    watch: path to a src dir or file to watch for changes. Src change will trigger a restart of bin # optional
+    watch_exclude: path relative to watch to exclude from watching # optional
+    build: path to build command to run on src changes before restart # optional
     env: array of key=value pairs for the app environment # optional
     cwd: local base path for relative app paths. Overrides the global one # optional
 opts:
@@ -83,6 +84,7 @@ $ ./release.sh vX.Y.Z
 - [x] allow graceful exits
 - [x] log any exit
 - [x] log by module
+- [x] watch exclude rules
 
 # known bugs
 - passing the env opt requires an explicit interpreter (like node) regardless of she-bang

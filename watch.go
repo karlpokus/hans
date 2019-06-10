@@ -4,6 +4,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/fsnotify/fsnotify"
 	"golang.org/x/time/rate"
@@ -11,8 +12,9 @@ import (
 
 type Watcher struct {
 	*App
-	Buildc  chan *App
-	RootDir string
+	Buildc      chan *App
+	RootDir     string
+	ExcludePath string
 	State
 	*fsnotify.Watcher
 }
@@ -36,6 +38,9 @@ func (w *Watcher) Watch() error {
 		return nil
 	}
 	walk := func(path string, fi os.FileInfo, err error) error {
+		if strings.HasPrefix(path, w.ExcludePath) {
+			return nil
+		}
 		if fi.IsDir() {
 			return w.Watcher.Add(path)
 		}
@@ -84,6 +89,7 @@ func (w *Watcher) Init(conf *WatcherConf) {
 	}
 	w.Watcher = watcher
 	w.RootDir = path.Join(conf.App.Cwd, conf.App.Watch)
+	w.ExcludePath = path.Join(w.RootDir, conf.App.Watch_exclude)
 }
 
 func (w *Watcher) Kill() {

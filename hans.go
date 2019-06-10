@@ -72,7 +72,7 @@ func (hans *Hans) cleanup() {
 		}
 		if app.Watcher.Running() {
 			hans.kill(app.Watcher)
-			hans.Stdout.Printf("%s %s watcher terminated", mod, app.Name)
+			hans.Stdout.Printf("%s %s watcher closed", mod, app.Name)
 		}
 	}
 	hans.Stdout.Printf("%s done", mod)
@@ -175,7 +175,7 @@ func (hans *Hans) build(buildc chan *App, runc chan Child) {
 			hans.Stderr.Printf("%s restart aborted", mod)
 			continue
 		}
-		hans.Stdout.Printf("%s %s build successful", mod, app.Name)
+		hans.Stdout.Printf("%s %s build successful. Attempting restart", mod, app.Name)
 		hans.kill(app) // app is running during build
 		app.SetCmd()
 		runc <- app

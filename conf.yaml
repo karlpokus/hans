@@ -3,7 +3,8 @@
 apps:
   - name: bixa
     bin: apps/bixa 15
-    watch: src/bixa
+    watch: src/bixa # relative cwd
+    watch_exclude: foo # relative watch
     build: go build -o apps/bixa src/bixa/bixa.go
   - name: rex
     bin: apps/rex

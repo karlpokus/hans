@@ -21,16 +21,17 @@ func (w *LogWriter) Write(b []byte) (int, error) {
 }
 
 type App struct {
-	Stdout *LogWriter
-	Stderr *LogWriter
-	Cmd    *exec.Cmd
-	Name   string
-	Bin    string
-	Watch  string
-	Build  string
-	Env    []string
-	Cwd    string
-	Manc   chan *App
+	Stdout        *LogWriter
+	Stderr        *LogWriter
+	Cmd           *exec.Cmd
+	Name          string
+	Bin           string
+	Watch         string
+	Watch_exclude string
+	Build         string
+	Env           []string
+	Cwd           string
+	Manc          chan *App
 	*Watcher
 	State
 	BadExit
