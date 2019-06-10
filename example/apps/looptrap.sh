@@ -1,6 +1,6 @@
 #!/bin/bash
 
-trap 'echo "closing db"' SIGINT
+trap 'echo "cleaning up stuff"; exit 0' SIGINT
 
 while true; do
   echo "speaking"
