@@ -88,7 +88,12 @@ func (app *App) SetCmd() {
 	app.Cmd.Stdout = app.Stdout
 	app.Cmd.Stderr = app.Stderr
 	app.Cmd.Dir = app.Cwd
-	app.Cmd.Env = app.Env
+	if len(app.Env) > 0 {
+		app.Cmd.Env = os.Environ()
+		for _, env := range app.Env {
+			app.Cmd.Env = append(app.Cmd.Env, env)
+		}
+	}
 }
 
 func (app *App) Kill() {
