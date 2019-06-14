@@ -9,6 +9,7 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	"io"
 
 	"github.com/fatih/color"
 	"gopkg.in/yaml.v2"
@@ -22,8 +23,10 @@ type Opt struct {
 }
 
 type Hans struct {
-	Stdout *log.Logger
-	Stderr *log.Logger
+	//Stdout *log.Logger
+	//Stderr *log.Logger
+	StdoutWriter io.Writer
+	StderrWriter io.Writer
 	Apps   []*App
 	Opts   Opt
 	TTL    time.Duration
@@ -35,6 +38,29 @@ type Child interface {
 	Kill()
 	RunningState(bool)
 	GetName() string
+}
+
+var fd1 = log.New(os.Stdout, "", log.Ldate|log.Ltime)
+var fd2 = log.New(os.Stderr, "", log.Ldate|log.Ltime)
+
+type Logger interface {
+	Setlog(bool) (string, io.Writer, func(string, ...interface{}) string)
+}
+
+// Stdout is a global logger and formats-, and outputs to whatever the passed Logger returns from Setlog
+func Stdout(lgr Logger, format string, v ...interface{}) {
+	name, w, colorFunc := lgr.Setlog(false)
+	fd1.SetPrefix(formatName(name, colorFunc))
+	fd1.SetOutput(w)
+	fd1.Printf(format, v...)
+}
+
+// Stderr is a global logger and formats-, and outputs to whatever the passed Logger returns from Setlog
+func Stderr(lgr Logger, format string, v ...interface{}) {
+	name, w, colorFunc := lgr.Setlog(true)
+	fd2.SetPrefix(formatName(name, colorFunc))
+	fd2.SetOutput(w)
+	fd2.Printf(format, v...)
 }
 
 func (hans Hans) interrupt() bool {
@@ -59,23 +85,23 @@ func (hans Hans) interrupt() bool {
 // those that don't
 func (hans *Hans) cleanup() {
 	mod := "[CLEANUP]"
-	hans.Stdout.Printf("%s start", mod)
+	Stdout(hans, "%s start", mod)
 	ok := hans.interrupt() // SIGINT is trappable.
 	if ok {
-		hans.Stdout.Printf("%s pgid recieved SIGINT", mod)
+		Stdout(hans, "%s pgid recieved SIGINT", mod)
 		time.Sleep(2 * time.Second)
 	}
 	for _, app := range hans.Apps {
 		if app.Running() {
 			hans.kill(app) // SIGKILL is not trappable
-			hans.Stdout.Printf("%s %s killed", mod, app.Name)
+			Stdout(hans, "%s %s killed", mod, app.Name)
 		}
 		if app.Watcher.Running() {
 			hans.kill(app.Watcher)
-			hans.Stdout.Printf("%s %s watcher closed", mod, app.Name)
+			Stdout(hans, "%s %s watcher closed", mod, app.Name)
 		}
 	}
-	hans.Stdout.Printf("%s done", mod)
+	Stdout(hans, "%s done", mod)
 }
 
 // kill kills a child and toggles running state
@@ -93,14 +119,14 @@ func (hans *Hans) run() {
 
 		select {
 		case <-time.After(hans.TTL):
-			hans.Stderr.Printf("%s %s timeout", mod, c.GetName())
+			Stderr(hans, "%s %s timeout", mod, c.GetName())
 		case err := <-fail:
 			if err != nil {
-				hans.Stderr.Printf("%s %s failed start attempt: %v", mod, c.GetName(), err)
+				Stderr(hans, "%s %s failed start attempt: %v", mod, c.GetName(), err)
 				break
 			}
 			c.RunningState(true)
-			hans.Stdout.Printf("%s %s started", mod, c.GetName())
+			Stdout(hans, "%s %s started", mod, c.GetName())
 		}
 	}
 }
@@ -111,22 +137,22 @@ func (hans *Hans) manager(manc chan *App, runc chan Child) {
 		code := app.Cmd.ProcessState.ExitCode()
 		switch {
 		case code == -1:
-			hans.Stdout.Printf("%s %s terminated", mod, app.Name)
+			Stdout(hans, "%s %s terminated", mod, app.Name)
 		case code == 0:
-			hans.Stdout.Printf("%s %s exited", mod, app.Name)
+			Stdout(hans, "%s %s exited", mod, app.Name)
 		case code > 0:
-			hans.Stderr.Printf("%s %s exited %d", mod, app.Name, code)
+			Stderr(hans, "%s %s exited %d", mod, app.Name, code)
 			// bad exit dance
 			app.BadExit.Init()
 			app.BadExit.Inc()
 			if app.BadExit.MaxReached() {
 				if app.BadExit.WithinWindow() {
-					hans.Stderr.Printf("%s maxBadExits reached. %s is dead", mod, app.Name)
+					Stderr(hans, "%s maxBadExits reached. %s is dead", mod, app.Name)
 					break
 				}
 				app.BadExit.Reset()
 			}
-			hans.Stdout.Printf("%s restarting %s", mod, app.Name)
+			Stdout(hans, "%s restarting %s", mod, app.Name)
 			app.SetCmd()
 			runc <- app
 		}
@@ -162,9 +188,9 @@ func (hans *Hans) Start() error {
 func (hans *Hans) build(buildc chan *App, runc chan Child) {
 	mod := "[BUILD]"
 	for app := range buildc {
-		hans.Stdout.Printf("%s %s src change detected. Attempting build and restart", mod, app.Name)
+		Stdout(hans, "%s %s src change detected. Attempting build and restart", mod, app.Name)
 		if app.Build == "" {
-			hans.Stderr.Printf("%s %s build cmd missing. Build aborted. Attempting restart", mod, app.Name)
+			Stderr(hans, "%s %s build cmd missing. Build aborted. Attempting restart", mod, app.Name)
 			hans.kill(app) // app is running during build
 			app.SetCmd()
 			runc <- app
@@ -172,26 +198,36 @@ func (hans *Hans) build(buildc chan *App, runc chan Child) {
 		}
 		res, err := app.build() // TODO: let app.build check Build string
 		if err != nil {
-			hans.Stderr.Printf("%s %s build failed: %v", mod, app.Name, err)
-			hans.Stderr.Printf("%s %s", mod, res)
-			hans.Stderr.Printf("%s restart attempt aborted", mod)
+			Stderr(hans, "%s %s build failed: %v", mod, app.Name, err)
+			Stderr(hans, "%s %s", mod, res)
+			Stderr(hans, "%s restart attempt aborted", mod)
 			continue
 		}
-		hans.Stdout.Printf("%s %s build successful. Attempting restart", mod, app.Name)
+		Stdout(hans, "%s %s build successful. Attempting restart", mod, app.Name)
 		hans.kill(app) // app is running during build
 		app.SetCmd()
 		runc <- app
 	}
 }
 
+func (hans *Hans) Setlog(isErr bool) (string, io.Writer, func(string, ...interface{}) string) {
+	if isErr {
+		return "hans", hans.StderrWriter, color.RedString
+	}
+	return "hans", hans.StdoutWriter, color.BlueString
+}
+
 // setLogging sets logging level for hans based on verbosity flag
 func (hans *Hans) setLogging(v bool) {
 	if v {
-		hans.Stdout = log.New(os.Stdout, formatName("hans", color.BlueString), log.Ldate|log.Ltime)
+		hans.StdoutWriter = os.Stdout
+		//hans.Stdout = log.New(os.Stdout, formatName("hans", color.BlueString), log.Ldate|log.Ltime)
 	} else {
-		hans.Stdout = log.New(ioutil.Discard, "", 0)
+		//hans.Stdout = log.New(ioutil.Discard, "", 0)
+		hans.StdoutWriter = ioutil.Discard
 	}
-	hans.Stderr = log.New(os.Stderr, formatName("hans", color.RedString), log.Ldate|log.Ltime)
+	//hans.Stderr = log.New(os.Stderr, formatName("hans", color.RedString), log.Ldate|log.Ltime)
+	hans.StderrWriter = os.Stderr
 }
 
 // New inits apps and watchers and returns a complete Hans type
@@ -231,6 +267,7 @@ func New(path string, v bool) (*Hans, error) {
 			app.Watcher.Init(&WatcherConf{
 				Buildc: buildc,
 				App:    app,
+				Verbose: v,
 			})
 		}
 	}
@@ -252,11 +289,11 @@ func readConf(hans *Hans, path string) error {
 
 // formatName limits app name length for logging purposes
 func formatName(name string, colorfn func(string, ...interface{}) string) string {
-	const maxChars int = 9
+	const maxChars int = 15 //9
 	if len(name) >= maxChars {
-		return colorfn(name[:9] + " ")
+		return colorfn(name[:14] + " ")
 	}
-	return colorfn(fmt.Sprintf("%-10v", name))
+	return colorfn(fmt.Sprintf("%-15v", name))
 }
 
 // splitBin formats a space-separated string command

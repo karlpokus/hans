@@ -85,7 +85,8 @@ $ ./release.sh vX.Y.Z
 - [x] log any exit
 - [x] log by module
 - [x] watch exclude rules
-- [ ] bug: build triggered with no noticable src change. Maybe add debug flag to log src change events
+- [x] bug: build triggered with no noticable src change. Add debug flag to log src change events
+- [x] global log for better buffering (partial implementation)
 
 # known bugs
 - passing the env opt requires an explicit interpreter (like node) regardless of she-bang

@@ -30,11 +30,12 @@ type App struct {
 	Watch_exclude string
 	Build         string
 	Env           []string
-	Cwd           string
-	Manc          chan *App
+	//Cwd           string
+	//Manc          chan *App
 	*Watcher
 	State
 	BadExit
+	AppConf
 }
 
 type AppConf struct {
