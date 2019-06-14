@@ -5,14 +5,18 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"io"
 
 	"github.com/fsnotify/fsnotify"
 	"golang.org/x/time/rate"
+	"github.com/fatih/color"
 )
 
 type Watcher struct {
-	*App
-	Buildc      chan *App
+	//*App
+	//Buildc      chan *App
+	//Verbose bool
+	WatcherConf
 	RootDir     string
 	ExcludePath string
 	State
@@ -22,6 +26,7 @@ type Watcher struct {
 type WatcherConf struct {
 	*App
 	Buildc chan *App
+	Verbose bool
 }
 
 // Watch starts watching files and dirs recursively
@@ -53,11 +58,21 @@ func (w *Watcher) Watch() error {
 	return nil
 }
 
-func debounce(a chan fsnotify.Event) chan struct{} {
+func (w *Watcher) Setlog(isErr bool) (string, io.Writer, func(string, ...interface{}) string) {
+	if isErr {
+		return w.GetName(), os.Stderr, color.RedString
+	}
+	return w.GetName(), os.Stdout, color.GreenString
+}
+
+func (w *Watcher) debounce(a chan fsnotify.Event) chan struct{} {
 	l := rate.NewLimiter(0.2, 1) // once per 5 secs
 	b := make(chan struct{})
 	go func() {
-		for _ = range a {
+		for ev := range a {
+			if w.Verbose {
+				Stdout(w, "%s", ev)
+			}
 			if l.Allow() {
 				b <- struct{}{}
 			}
@@ -75,7 +90,7 @@ func (w *Watcher) Run(fail chan error) {
 		return
 	}
 	// TODO: handle w.Watcher.Errors
-	for _ = range debounce(w.Watcher.Events) {
+	for _ = range w.debounce(w.Watcher.Events) {
 		w.Buildc <- w.App
 	}
 }
@@ -83,6 +98,7 @@ func (w *Watcher) Run(fail chan error) {
 func (w *Watcher) Init(conf *WatcherConf) {
 	w.Buildc = conf.Buildc
 	w.App = conf.App
+	w.Verbose = conf.Verbose
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		panic(err) // TODO: don't panic
