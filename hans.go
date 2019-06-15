@@ -7,7 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
-	"syscall"
+	"syscall" // TODO: use os.Interrupt instead
 	"time"
 
 	"github.com/fatih/color"
@@ -184,6 +184,26 @@ func (hans *Hans) build(buildc chan *App, runc chan Child) {
 	}
 }
 
+// mem prints mem usage periodically for all running apps
+func (hans *Hans) mem() {
+	mod := "[MEM]"
+	for {
+		time.Sleep(10 * time.Second)
+		var out []string
+		for _, app := range hans.Apps {
+			if app.Running() {
+				data, err := rss(app.Cmd.Process.Pid)
+				if err == nil { // ignore err
+					out = append(out, fmt.Sprintf("%s %dMB", app.Name, data))
+				}
+			}
+		}
+		if len(out) > 0 {
+			hans.Stdout.Printf("%s %s", mod, strings.Join(out, " "))
+		}
+	}
+}
+
 // setLogging sets logging level for hans based on verbosity flag
 func (hans *Hans) setLogging(v bool) {
 	if v {
@@ -195,7 +215,7 @@ func (hans *Hans) setLogging(v bool) {
 }
 
 // New inits apps and watchers and returns a complete Hans type
-func New(path string, v bool) (*Hans, error) {
+func New(path string, v, mem bool) (*Hans, error) {
 	hans := &Hans{}
 	hans.setLogging(v)
 	err := readConf(hans, path)
@@ -221,6 +241,9 @@ func New(path string, v bool) (*Hans, error) {
 	go hans.manager(manc, runc)
 	buildc := make(chan *App)
 	go hans.build(buildc, runc)
+	if mem {
+		go hans.mem()
+	}
 	// init apps and watchers
 	for _, app := range hans.Apps {
 		app.Init(&AppConf{

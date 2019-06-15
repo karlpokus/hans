@@ -17,7 +17,7 @@ var (
 )
 
 func TestHansNew(t *testing.T) {
-	hans, err := New(confPath, true)
+	hans, err := New(confPath, true, false)
 	if err != nil {
 		t.Errorf("Hans New failed: %v", err)
 		t.FailNow()
@@ -29,7 +29,7 @@ func TestHansNew(t *testing.T) {
 }
 
 func TestHansStart(t *testing.T) {
-	hans, _ := New(confPath, false)
+	hans, _ := New(confPath, false, false)
 	if err := shouldBeRunning(false, hans.Apps); err != nil {
 		t.Error(err)
 	}

@@ -71,8 +71,6 @@ $ ./release.sh vX.Y.Z
 - [ ] log levels
 - [x] `Cmd.Dir` for global pwd
 - [x] use conf structs
-- [ ] check `Cmd.ProcessState` if proc exits on its own
-- [ ] notification channel on app restart
 - [x] go mod
 - [x] replace fsnotify with lib
 - [ ] support globbing build cmd
@@ -86,6 +84,7 @@ $ ./release.sh vX.Y.Z
 - [x] log by module
 - [x] watch exclude rules
 - [ ] bug: build triggered with no noticable src change. Maybe add debug flag to log src change events
+- [x] mem usage flag
 
 # known bugs
 - passing the env opt requires an explicit interpreter (like node) regardless of she-bang
